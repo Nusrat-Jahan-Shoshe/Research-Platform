@@ -137,6 +137,26 @@ class CitationAndMediaApiTest extends TestCase
         ]);
     }
 
+    public function test_cannot_add_a_collaborator_who_does_not_have_an_account(): void
+    {
+        $owner = User::factory()->create();
+        $project = ResearchProject::create([
+            'owner_id' => $owner->id,
+            'title' => 'Invite Security Project',
+        ]);
+        $project->members()->attach($owner->id, ['role' => 'student']);
+
+        $this->actingAs($owner)
+            ->postJson("/api/v1/projects/{$project->id}/members", [
+                'email' => 'new-collaborator@example.com',
+                'role' => 'co-author',
+            ])
+            ->assertNotFound()
+            ->assertJsonPath('message', 'No account exists for that email address.');
+
+        $this->assertDatabaseMissing('users', ['email' => 'new-collaborator@example.com']);
+    }
+
     public function test_can_record_active_editor_presence(): void
     {
         $user = User::factory()->create(['name' => 'Active Writer']);

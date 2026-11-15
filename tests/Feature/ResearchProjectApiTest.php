@@ -199,6 +199,75 @@ class ResearchProjectApiTest extends TestCase
             ->assertJsonPath('data.status', 'resolved');
     }
 
+    public function test_task_assignee_must_belong_to_the_project(): void
+    {
+        $owner = User::factory()->create();
+        $outsider = User::factory()->create();
+        $project = ResearchProject::create([
+            'owner_id' => $owner->id,
+            'title' => 'Task Assignment Project',
+        ]);
+
+        $this->actingAs($owner)
+            ->postJson("/api/v1/projects/{$project->id}/tasks", [
+                'title' => 'Review the methodology',
+                'assignee_id' => $outsider->id,
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('assignee_id');
+
+        $this->assertDatabaseCount('project_tasks', 0);
+    }
+
+    public function test_project_member_can_delete_a_task(): void
+    {
+        $owner = User::factory()->create();
+        $project = ResearchProject::create([
+            'owner_id' => $owner->id,
+            'title' => 'Task Deletion Project',
+        ]);
+        $task = $project->tasks()->create([
+            'title' => 'Remove this task',
+            'created_by' => $owner->id,
+        ]);
+
+        $this->actingAs($owner)
+            ->deleteJson("/api/v1/tasks/{$task->id}")
+            ->assertOk()
+            ->assertJsonPath('message', 'Task removed successfully.');
+
+        $this->assertDatabaseMissing('project_tasks', ['id' => $task->id]);
+    }
+
+    public function test_feedback_cannot_reference_a_document_version_from_another_project(): void
+    {
+        $owner = User::factory()->create();
+        $project = ResearchProject::create([
+            'owner_id' => $owner->id,
+            'title' => 'Feedback Project',
+        ]);
+        $otherProject = ResearchProject::create([
+            'owner_id' => $owner->id,
+            'title' => 'Other Project',
+        ]);
+        $project->members()->attach($owner->id, ['role' => 'student']);
+        $version = $otherProject->documentVersions()->create([
+            'author_id' => $owner->id,
+            'version_number' => 1,
+            'content' => ['html' => '<p>Private draft</p>'],
+        ]);
+
+        $this->actingAs($owner)
+            ->postJson("/api/v1/projects/{$project->id}/feedback", [
+                'body' => 'This note must stay within the project.',
+                'document_version_id' => $version->id,
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('document_version_id');
+
+        $this->assertDatabaseCount('project_feedback', 0);
+    }
+
     public function test_project_summary_uses_configured_openai_compatible_gateway(): void
     {
         $user = User::factory()->create(['trial_ends_at' => now()->addDay()]);
