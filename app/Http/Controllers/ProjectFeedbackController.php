@@ -18,7 +18,16 @@ class ProjectFeedbackController extends Controller
     {
         $validated = $request->validate([
             'body' => ['required', 'string', 'max:3000'],
-            'document_version_id' => ['nullable', 'integer', 'exists:document_versions,id'],
+            'document_version_id' => [
+                'nullable',
+                'integer',
+                'exists:document_versions,id',
+                function (string $attribute, mixed $value, \Closure $fail) use ($project) {
+                    if ($value && ! $project->documentVersions()->where('id', $value)->exists()) {
+                        $fail('The selected document version does not belong to this project.');
+                    }
+                },
+            ],
             'start_offset' => ['nullable', 'integer', 'min:0'],
             'end_offset' => ['nullable', 'integer', 'gte:start_offset'],
         ]);

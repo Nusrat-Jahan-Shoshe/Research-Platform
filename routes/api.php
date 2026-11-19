@@ -48,5 +48,6 @@ Route::prefix('v1')->middleware('auth')->group(function (): void {
         Route::post('/projects/{project}/papers', [PaperController::class, 'store']);
     });
     Route::patch('/tasks/{task}', [ProjectTaskController::class, 'update']);
+    Route::delete('/tasks/{task}', [ProjectTaskController::class, 'destroy']);
     Route::patch('/feedback/{feedback}', [ProjectFeedbackController::class, 'update']);
 });

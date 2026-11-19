@@ -165,13 +165,7 @@ class ResearchProjectController extends Controller
         $targetUser = User::query()->where('email', $validated['email'])->first();
 
         if (! $targetUser) {
-            $targetUser = User::create([
-                'name' => explode('@', $validated['email'])[0],
-                'email' => $validated['email'],
-                'password' => bcrypt('password123'),
-                'orcid_id' => '0000-0002-'.rand(1000, 9999).'-'.rand(1000, 9999),
-                'is_teacher' => in_array($validated['role'], ['supervisor', 'reviewer']),
-            ]);
+            return response()->json(['message' => 'No account exists for that email address.'], 404);
         }
 
         $project->members()->syncWithoutDetaching([

@@ -19,7 +19,16 @@ class ProjectTaskController extends Controller
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:180'],
             'description' => ['nullable', 'string', 'max:2000'],
-            'assignee_id' => ['nullable', 'integer', 'exists:users,id'],
+            'assignee_id' => [
+                'nullable',
+                'integer',
+                'exists:users,id',
+                function (string $attribute, mixed $value, \Closure $fail) use ($project) {
+                    if ($value && ! ($project->owner_id == $value || $project->members()->where('users.id', $value)->exists())) {
+                        $fail('The selected assignee must belong to the project.');
+                    }
+                },
+            ],
             'priority' => ['nullable', 'in:low,normal,high'],
             'due_at' => ['nullable', 'date'],
         ]);
@@ -49,5 +58,22 @@ class ProjectTaskController extends Controller
         $task->update($validated);
 
         return response()->json(['data' => $task->fresh('assignee:id,name')]);
+    }
+
+    public function destroy(Request $request, ProjectTask $task): JsonResponse
+    {
+        $task->load('project');
+        $user = $request->user();
+
+        abort_unless(
+            $user && ($task->project->owner_id === $user->id
+                || $task->project->members()->whereKey($user->id)->exists()),
+            403,
+            'You are not a member of this research project.'
+        );
+
+        $task->delete();
+
+        return response()->json(['message' => 'Task removed successfully.']);
     }
 }
