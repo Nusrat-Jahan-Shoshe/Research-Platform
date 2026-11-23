@@ -35,10 +35,6 @@ class AiGateway
             return 'Groq';
         }
 
-        if (str_contains($baseUrl, 'cambercloud.com') || str_contains($baseUrl, 'camber')) {
-            return 'Alice (Camber Cloud)';
-        }
-
         if (str_contains($baseUrl, '11434') || str_contains($baseUrl, 'ollama')) {
             return 'Ollama (Local Private)';
         }
@@ -63,10 +59,6 @@ class AiGateway
 
         if ($provider === 'Groq') {
             return array_keys(config('services.groq.free_models', []));
-        }
-
-        if ($provider === 'Alice (Camber Cloud)') {
-            return array_keys(config('services.camber.free_models', []));
         }
 
         return [config('services.ai.model', 'llama3.2')];
@@ -172,7 +164,6 @@ class AiGateway
     {
         return [
             'openrouter' => $this->probeOpenRouter(),
-            'alice' => $this->probeCamber(),
             'gemini' => $this->probeGemini(),
             'groq' => $this->probeGroq(),
             'ollama' => $this->probeOllama(),
@@ -257,66 +248,6 @@ class AiGateway
             'latency_ms' => $latencyMs,
             'message' => $message,
             'free_tier' => 'Free models + $100 router credit',
-            'recommended' => true,
-        ];
-    }
-
-    /**
-     * Probe Camber Cloud agent availability (Alice · Thesis Co-Pilot).
-     *
-     * @return array{
-     *     name: string,
-     *     model: string,
-     *     endpoint: string,
-     *     transport_security: string,
-     *     has_credentials: bool,
-     *     status: string,
-     *     status_code: ?int,
-     *     latency_ms: ?int,
-     *     message: string,
-     *     free_tier: string,
-     *     recommended: bool
-     * }
-     */
-    public function probeCamber(): array
-    {
-        $agentUrl = (string) config('services.camber.agent_url', 'https://app.cambercloud.com/agents/hafizurrahman78232878/Thesis_Copilot');
-        $key = (string) config('services.camber.key');
-        $model = (string) config('services.camber.model', 'Thesis_Copilot');
-
-        $start = microtime(true);
-        $status = 'offline';
-        $statusCode = null;
-        $latencyMs = null;
-        $message = '';
-
-        try {
-            $response = Http::connectTimeout(4)->timeout(6)->get($agentUrl);
-            $latencyMs = (int) round((microtime(true) - $start) * 1000);
-            $statusCode = $response->status();
-
-            if ($response->successful()) {
-                $status = 'ready';
-                $message = 'Alice Camber agent is live and operational.';
-            } else {
-                $status = 'ready';
-                $message = "Camber agent endpoint reachable (HTTP {$statusCode}).";
-            }
-        } catch (\Throwable $e) {
-            $message = 'Connection to Camber Cloud: '.$e->getMessage();
-        }
-
-        return [
-            'name' => 'Alice · Thesis Co-Pilot (Camber Cloud)',
-            'model' => $model,
-            'endpoint' => $agentUrl,
-            'transport_security' => 'HTTPS / TLS 1.3 (End-to-End Encrypted)',
-            'has_credentials' => filled($key) || filled($agentUrl),
-            'status' => $status,
-            'status_code' => $statusCode,
-            'latency_ms' => $latencyMs,
-            'message' => $message,
-            'free_tier' => 'Camber Cloud Custom Agent',
             'recommended' => true,
         ];
     }

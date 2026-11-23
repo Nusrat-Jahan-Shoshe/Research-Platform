@@ -2601,3 +2601,18 @@ body.layout-review .workspace-grid { grid-template-columns: 1.1fr 0.9fr; }
 
 
 
+.editor-control-label { align-self: center; color: var(--muted); font-size: 10px; }
+.editor-control, .editor-color-control { height: 29px; border: 1px solid var(--line); background: #f2f6f4; color: var(--ink); font-size: 11px; }
+.editor-control { padding: 0 5px; }
+.editor-color-control { display: inline-flex; align-items: center; gap: 4px; padding: 0 5px; cursor: pointer; }
+.editor-color-control input { width: 18px; height: 18px; padding: 0; border: 0; cursor: pointer; }
+.editor-canvas.is-preview { cursor: default; }
+.ai-chat-heading { display: flex; justify-content: space-between; align-items: end; gap: 12px; margin-top: 22px; }
+.ai-chat-heading small { display: block; color: var(--muted); font-size: 10px; margin-top: 4px; }
+.ai-chat-history { max-height: 280px; overflow-y: auto; display: grid; gap: 9px; margin: 10px 0; padding: 10px; border: 1px solid var(--line); background: rgba(255,255,255,.04); }
+.ai-chat-empty { color: var(--muted); font-size: 11px; margin: 0; }
+.ai-chat-message { padding: 9px 11px; border-left: 3px solid var(--ai-accent); background: rgba(255,255,255,.04); }
+.ai-chat-message.user { border-left-color: var(--teal); }
+.ai-chat-message strong, .ai-chat-message small { display: block; font-size: 10px; }
+.ai-chat-message small { color: var(--muted); margin-top: 2px; }
+.ai-chat-message p { white-space: pre-wrap; font-size: 11px; line-height: 1.6; margin: 6px 0 0; }

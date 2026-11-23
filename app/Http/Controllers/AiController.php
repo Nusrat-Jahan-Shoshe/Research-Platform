@@ -80,7 +80,7 @@ class AiController extends Controller
                 'claude' => 'anthropic/claude-3.5-sonnet',
                 'gpt4o' => 'openai/gpt-4o',
                 'gpt4omini' => 'openai/gpt-4o-mini',
-                'alice' => 'openai/gpt-4o-mini',
+                'auto' => null,
                 default => $model,
             };
         }
@@ -162,7 +162,7 @@ class AiController extends Controller
     }
 
     /**
-     * Generate an Excel-style methodology & section governance matrix via Alice / AI Copilot.
+     * Generate an Excel-style methodology and section governance matrix via the AI copilot.
      */
     public function recommendMethodologyMatrix(Request $request, ResearchProject $project, AiGateway $ai): JsonResponse
     {
@@ -178,7 +178,7 @@ class AiController extends Controller
             $prompt = [
                 [
                     'role' => 'system',
-                    'content' => 'You are Alice, Lead Academic Research Methodologist and Thesis Co-Pilot for the Co-Auth Research Platform. Recommend an academic section breakdown, research methodologies, and rigor rules formatted as a spreadsheet matrix for this study. Return strictly a JSON object with keys: "overall_methodology", "paradigm", "theoretical_grounding", and "matrix" (array of objects with: row_id, section, methodology, ai_recommendation, author_rule, target_words, min_citations, status). Do not fabricate citations.',
+                    'content' => 'You are the Co-Auth academic research methodology assistant. Recommend an academic section breakdown, research methodologies, and rigor rules formatted as a spreadsheet matrix for this study. Return strictly a JSON object with keys: "overall_methodology", "paradigm", "theoretical_grounding", and "matrix" (array of objects with: row_id, section, methodology, ai_recommendation, author_rule, target_words, min_citations, status). Do not fabricate citations.',
                 ],
                 [
                     'role' => 'user',

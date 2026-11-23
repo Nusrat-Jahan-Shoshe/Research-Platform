@@ -64,7 +64,6 @@
                         <p class="workspace-description">{{ $project->description ?: 'A shared collaborative space for thesis drafting, evidence capture, citations, and supervisor reviews.' }}</p>
                         <div class="ai-button-row">
                             <button class="button button-ai" id="ai-summary" type="button">✦ Ask research assistant</button>
-                            <a href="https://app.cambercloud.com/agents/hafizurrahman78232878/Thesis_Copilot" target="_blank" rel="noopener noreferrer" class="button button-quiet" style="border-color: rgba(124, 58, 237, 0.4); color: #7c3aed; font-weight: 600;" title="Launch Alice: Lead Academic Methodologist on Camber Cloud">🎓 Launch Alice Copilot ↗</a>
                             <button class="button button-ai-quiet" type="button" data-ai-instruction="Review the current project context and identify the three most important next research actions.">Next best actions</button>
                             <button class="button button-ai-quiet" type="button" data-ai-instruction="Check whether the research question, methodology, evidence, and expected contribution are aligned.">Check alignment</button>
                             <button class="button button-quiet" id="open-theory-guide" type="button">📚 Methodology theory guide</button>
@@ -187,6 +186,23 @@
                                 <button type="button" data-command="insertUnorderedList" title="Bulleted List">☷</button>
                                 <button type="button" data-command="insertOrderedList" title="Numbered List">1.</button>
                                 <button type="button" data-format-block="blockquote" title="Blockquote">“</button>
+                                <span class="toolbar-separator"></span>
+                                <label class="editor-control-label" for="editor-font-size">Size</label>
+                                <select id="editor-font-size" class="editor-control" aria-label="Text size">
+                                    <option value="3">Normal</option>
+                                    <option value="2">Small</option>
+                                    <option value="4">Large</option>
+                                    <option value="5">Title</option>
+                                </select>
+                                <label class="editor-color-control" title="Text color">
+                                    <span aria-hidden="true">A</span>
+                                    <input type="color" id="editor-text-color" value="#263c42" aria-label="Text color">
+                                </label>
+                                <button type="button" data-command="justifyLeft" title="Align left">≡</button>
+                                <button type="button" data-command="justifyCenter" title="Align center">≡·</button>
+                                <button type="button" data-command="justifyRight" title="Align right">·≡</button>
+                                <button type="button" data-command="justifyFull" title="Justify text">≡</button>
+                                <button type="button" id="toggle-editor-preview" title="Preview manuscript">Preview</button>
                             </div>
 
                             <div class="toolbar-academic-group">
@@ -287,7 +303,7 @@
                                         <span class="excel-app-icon" title="Microsoft Excel Spreadsheet">📊</span>
                                         <span class="excel-doc-title">Co-Auth_Methodology_Matrix.xlsx</span>
                                         <span class="excel-badge-autosave"><i class="autosave-dot"></i> AutoSave On</span>
-                                        <span class="excel-badge-ai"><span class="ai-sparkle">✦</span> Alice (Camber AI): Ready</span>
+                                        <span class="excel-badge-ai"><span class="ai-sparkle">✦</span> AI methodology assistant: Ready</span>
                                     </div>
                                     <div class="excel-title-center">
                                         <span class="excel-header-subcopy">AI Agent Recommends Methodologies & Sections · Author Can Freely Change & Override Rules</span>
@@ -301,15 +317,15 @@
                                 <div class="excel-ribbon-bar">
                                     <div class="excel-ribbon-tabs">
                                         <button type="button" class="excel-ribbon-tab is-active" data-excel-tab="methodology">Methodology & Rules</button>
-                                        <button type="button" class="excel-ribbon-tab" data-excel-tab="ai">AI Agent (Alice)</button>
+                                        <button type="button" class="excel-ribbon-tab" data-excel-tab="ai">AI methodology assistant</button>
                                         <button type="button" class="excel-ribbon-tab" data-excel-tab="author">Author Rules</button>
                                         <button type="button" class="excel-ribbon-tab" data-excel-tab="export">Export & Sync</button>
                                     </div>
                                     <div class="excel-ribbon-actions">
-                                        <button type="button" class="excel-action-btn excel-action-primary" id="btn-excel-ai-recommend" title="Alice AI analyzes the study and recommends optimal section methodologies and rigor rules">
+                                        <button type="button" class="excel-action-btn excel-action-primary" id="btn-excel-ai-recommend" title="AI analyzes the study and recommends optimal section methodologies and rigor rules">
                                             <span class="btn-icon">🤖</span>
                                             <span class="btn-text">
-                                                <strong>Ask Alice (AI Recommend)</strong>
+                                                <strong>Ask AI (recommend)</strong>
                                                 <small>Auto-suggest methodology & rules</small>
                                             </span>
                                         </button>
@@ -352,7 +368,7 @@
                                                 <th class="excel-th-corner" title="Select all cells"></th>
                                                 <th class="excel-th-col" data-col="A" style="min-width: 190px;">A<span class="col-name">Section / Chapter</span></th>
                                                 <th class="excel-th-col" data-col="B" style="min-width: 210px;">B<span class="col-name">Methodology & Paradigm</span></th>
-                                                <th class="excel-th-col" data-col="C" style="min-width: 250px;">C<span class="col-name">AI Recommendation (Alice)</span></th>
+                                                <th class="excel-th-col" data-col="C" style="min-width: 250px;">C<span class="col-name">AI Recommendation</span></th>
                                                 <th class="excel-th-col excel-th-author" data-col="D" style="min-width: 280px;">D<span class="col-name">Author Rules & Overrides (You Change)</span></th>
                                                 <th class="excel-th-col" data-col="E" style="min-width: 100px;">E<span class="col-name">Words</span></th>
                                                 <th class="excel-th-col" data-col="F" style="min-width: 85px;">F<span class="col-name">Cites</span></th>
@@ -476,15 +492,13 @@
                             <div class="ai-model-select-wrapper">
                                 <label for="ai-model-dropdown" class="ai-select-label">Active AI Model:</label>
                                 <select id="ai-model-dropdown" class="ai-model-select">
+                                    <option value="auto" selected>Auto · choose the best available model</option>
                                     <optgroup label="★ Multi-Model Gateway (OpenRouter · Active)">
                                         <option value="openai/gpt-4o-mini" selected>OpenRouter · GPT-4o Mini (Fast &amp; Accurate)</option>
                                         <option value="openai/gpt-4o">OpenRouter · GPT-4o (Deep Reasoning)</option>
                                         <option value="anthropic/claude-3.5-sonnet">OpenRouter · Claude 3.5 Sonnet (Academic Rigor)</option>
                                         <option value="deepseek/deepseek-r1">OpenRouter · DeepSeek-R1 (Logic &amp; Proofs)</option>
                                         <option value="meta-llama/llama-3.3-70b-instruct">OpenRouter · Llama 3.3 70B (Open Weights)</option>
-                                    </optgroup>
-                                    <optgroup label="🎓 Dedicated Academic Agent">
-                                        <option value="alice">Alice · Thesis Co-Pilot (Camber Cloud)</option>
                                     </optgroup>
                                     <optgroup label="☁ Cloud Providers">
                                         <option value="gemini-2.5-flash">Google Gemini 2.5 Flash (1M Context)</option>
@@ -504,11 +518,6 @@
                                     <div class="ai-agent is-active" data-ai-agent="openrouter" data-model="openai/gpt-4o-mini">
                                         <span class="ai-personal-logo" style="background: linear-gradient(135deg, #0284c7, #06b6d4); color: #fff; font-weight: 700;">✦</span>
                                         <span><strong>OpenRouter (GPT-4o Mini)</strong><small>Flagship Multi-Model Gateway · Online</small></span>
-                                        <i class="ai-status-indicator is-ready" title="Online &amp; Ready"></i>
-                                    </div>
-                                    <div class="ai-agent" data-ai-agent="alice" data-model="alice">
-                                        <span class="ai-personal-logo" style="background: linear-gradient(135deg, #7c3aed, #4f46e5); color: #fff; font-weight: 700;">A</span>
-                                        <span><strong>Alice · Thesis Co-Pilot</strong><small>Lead Academic Methodologist &amp; Critic</small></span>
                                         <i class="ai-status-indicator is-ready" title="Online &amp; Ready"></i>
                                     </div>
                                     <div class="ai-agent" data-ai-agent="claude" data-model="anthropic/claude-3.5-sonnet">
@@ -595,12 +604,22 @@
                                     </div>
                                 </div>
                             </details>
-                            <label class="ai-prompt-label" for="ai-lab-prompt">What should we work on?</label>
+                            <div class="ai-chat-heading">
+                                <div>
+                                    <label class="ai-prompt-label" for="ai-lab-prompt">Project conversation</label>
+                                    <small>Keep asking questions as long as you need; the conversation stays in this workspace.</small>
+                                </div>
+                                <button type="button" class="text-button" id="clear-ai-chat">Clear chat</button>
+                            </div>
+                            <div class="ai-chat-history" id="ai-chat-history" aria-live="polite">
+                                <p class="ai-chat-empty">Ask about the project, methodology, evidence, or the next step.</p>
+                            </div>
                             <textarea id="ai-lab-prompt" class="ai-prompt" rows="3" placeholder="Ask for a literature gap, methodology check, next step, or evidence review…"></textarea>
                             <div class="ai-quick-actions">
                                 <button type="button" class="ai-quick-action" data-ai-instruction="Summarize the current project state and recommend the next three research actions.">Summarize project</button>
                                 <button type="button" class="ai-quick-action" data-ai-instruction="Identify unresolved risks, feedback, or evidence gaps in this research project.">Find research gaps</button>
                                 <button type="button" class="ai-quick-action" data-ai-instruction="Suggest a rigorous structure for the next manuscript section based on the current methodology.">Plan next section</button>
+                                <button type="button" class="ai-quick-action" data-ai-instruction="Guide me through writing this complete research study in a classical academic sequence: title, abstract, introduction, literature review, theoretical framework, methodology, results, discussion, conclusion, limitations, references, and appendices. Use the project context and explain what evidence belongs in each section.">Classical writing process</button>
                             </div>
                             <button class="button button-ai ai-lab-submit" id="ai-lab-submit" type="button">Run research copilot <span>⌘↵</span></button>
                             <div class="ai-lab-output" id="ai-lab-output" role="status"><span class="ai-output-placeholder">Your grounded response will appear here.</span></div>
@@ -679,8 +698,6 @@
                                             <span id="status-openrouter" class="arch-badge arch-pass" style="font-size: 0.65rem;">ONLINE</span>
                                         </div>
                                         <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(124, 58, 237, 0.08); padding: 5px 8px; border-radius: 4px; border-left: 3px solid #7c3aed;">
-                                            <span><strong>★ Alice (Camber Cloud)</strong></span>
-                                            <span id="status-alice" class="arch-badge arch-pass" style="font-size: 0.65rem;">ONLINE</span>
                                         </div>
                                         <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.03); padding: 5px 8px; border-radius: 4px;">
                                             <span>Google Gemini 2.5 Flash</span>

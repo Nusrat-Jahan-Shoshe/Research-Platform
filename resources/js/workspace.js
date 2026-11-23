@@ -27,6 +27,11 @@ const aiModelDropdown = document.querySelector('#ai-model-dropdown');
 const aiParamTemperature = document.querySelector('#param-temperature');
 const aiValTemperature = document.querySelector('#val-temperature');
 const aiParamDepth = document.querySelector('#param-context-depth');
+const aiChatHistory = document.querySelector('#ai-chat-history');
+const clearAiChatButton = document.querySelector('#clear-ai-chat');
+const editorFontSize = document.querySelector('#editor-font-size');
+const editorTextColor = document.querySelector('#editor-text-color');
+const editorPreviewButton = document.querySelector('#toggle-editor-preview');
 
 const AI_MODEL_DEFINITIONS = {
     'openai/gpt-4o-mini': { key: 'openrouter', name: 'OpenRouter · GPT-4o Mini', subtitle: 'Flagship Multi-Model Gateway · End-to-End Encrypted' },
@@ -34,7 +39,7 @@ const AI_MODEL_DEFINITIONS = {
     'anthropic/claude-3.5-sonnet': { key: 'claude', name: 'Claude 3.5 Sonnet', subtitle: 'Scholarly Dissertation & Rigor via OpenRouter' },
     'deepseek/deepseek-r1': { key: 'deepseek', name: 'DeepSeek-R1', subtitle: 'Mathematical & Logical Proofs via OpenRouter' },
     'meta-llama/llama-3.3-70b-instruct': { key: 'llama', name: 'Llama 3.3 70B', subtitle: 'Open-Weights High-Throughput via OpenRouter' },
-    'alice': { key: 'alice', name: 'Alice · Thesis Co-Pilot (Camber)', subtitle: 'Lead Academic Methodologist & Critic · Camber Cloud' },
+    auto: { key: 'auto', name: 'Auto model selection', subtitle: 'Chooses the best available configured model' },
     'gemini-2.5-flash': { key: 'gemini', name: 'Google Gemini 2.5 Flash', subtitle: '1,000,000+ token context · Free tier' },
     'llama-3.3-70b-versatile': { key: 'llama', name: 'Llama 3.3 (Groq)', subtitle: 'Sub-second LPU Inference' },
     'llama3.2': { key: 'ollama', name: 'Ollama (Local Private)', subtitle: 'Air-gapped 100% offline local loopback' },
@@ -71,7 +76,7 @@ aiModelDropdown?.addEventListener('change', (event) => {
 
 aiAgents.forEach((agent) => {
     agent.addEventListener('click', () => {
-        const targetModel = agent.dataset.model || (agent.dataset.aiAgent === 'alice' ? 'alice' : 'openai/gpt-4o-mini');
+        const targetModel = agent.dataset.model || 'openai/gpt-4o-mini';
         syncModelSelection(targetModel);
     });
 });
@@ -93,10 +98,10 @@ try {
     if (savedModel && AI_MODEL_DEFINITIONS[savedModel]) {
         syncModelSelection(savedModel);
     } else {
-        syncModelSelection('openai/gpt-4o-mini');
+        syncModelSelection('auto');
     }
 } catch (_) {
-    syncModelSelection('openai/gpt-4o-mini');
+    syncModelSelection('auto');
 }
 
 // Cached project data
@@ -279,7 +284,7 @@ document.querySelector('#toggle-architecture')?.addEventListener('click', (event
     event.currentTarget.textContent = isCollapsed ? 'Expand tree ↓' : 'Collapse tree ↑';
 });
 
-const runAiSummary = async (instruction, sourceButton = null) => {
+let runAiSummary = async (instruction, sourceButton = null) => {
     const buttons = [aiSummaryButton, aiLabSubmit, ...document.querySelectorAll('[data-ai-instruction]')].filter(Boolean);
     buttons.forEach((button) => { button.disabled = true; });
     if (sourceButton) sourceButton.textContent = 'Thinking…';
@@ -287,7 +292,7 @@ const runAiSummary = async (instruction, sourceButton = null) => {
     if (aiLabOutput) aiLabOutput.innerHTML = '<span class="ai-output-loading">Synthesizing project context…</span>';
     if (aiResult) aiResult.textContent = '';
 
-    const selectedModel = aiModelDropdown?.value || 'openai/gpt-4o-mini';
+    const selectedModel = aiModelDropdown?.value || 'auto';
     const temperature = aiParamTemperature ? parseFloat(aiParamTemperature.value) : 0.2;
     const depth = aiParamDepth?.value || 'standard';
     const checklist = {
@@ -308,7 +313,7 @@ const runAiSummary = async (instruction, sourceButton = null) => {
             },
             body: JSON.stringify({
                 instruction: instruction || 'Summarize the current project state and recommend the next three research actions.',
-                model: selectedModel,
+                model: selectedModel === 'auto' ? null : selectedModel,
                 temperature,
                 depth,
                 checklist,
@@ -320,6 +325,7 @@ const runAiSummary = async (instruction, sourceButton = null) => {
         }
 
         const content = payload.data.content || 'No response was returned.';
+        appendAiChatMessage('assistant', content, payload.data.model || selectedModel);
         if (aiResult) aiResult.textContent = content;
         if (aiLabOutput) aiLabOutput.textContent = content;
         const activeModelText = payload.data.model || selectedModel;
@@ -336,6 +342,29 @@ const runAiSummary = async (instruction, sourceButton = null) => {
         if (sourceButton) sourceButton.textContent = 'Run research copilot';
     }
 };
+
+const appendAiChatMessage = (role, content, model = '') => {
+    if (!aiChatHistory) return;
+    aiChatHistory.querySelector('.ai-chat-empty')?.remove();
+    const message = document.createElement('div');
+    message.className = `ai-chat-message ${role}`;
+    message.innerHTML = `<strong>${role === 'user' ? 'You' : 'Research AI'}</strong>${model && role !== 'user' ? `<small>${model}</small>` : ''}<p></p>`;
+    message.querySelector('p').textContent = content;
+    aiChatHistory.appendChild(message);
+    aiChatHistory.scrollTop = aiChatHistory.scrollHeight;
+};
+
+const originalRunAiSummary = runAiSummary;
+runAiSummary = async (instruction, sourceButton = null) => {
+    const prompt = (instruction || '').trim();
+    if (prompt) appendAiChatMessage('user', prompt);
+    return originalRunAiSummary(instruction, sourceButton);
+};
+
+clearAiChatButton?.addEventListener('click', () => {
+    if (!aiChatHistory) return;
+    aiChatHistory.innerHTML = '<p class="ai-chat-empty">Ask about the project, methodology, evidence, or the next step.</p>';
+});
 
 document.querySelectorAll('[data-ai-instruction]').forEach((button) => {
     button.addEventListener('click', () => {
@@ -588,10 +617,24 @@ const loadAiAvailability = async () => {
         };
 
         updateStatusBadge('#status-openrouter', providers.openrouter);
-        updateStatusBadge('#status-alice', providers.alice);
         updateStatusBadge('#status-gemini', providers.gemini);
         updateStatusBadge('#status-groq', providers.groq);
         updateStatusBadge('#status-ollama', providers.ollama);
+
+        if (aiModelDropdown?.value === 'auto') {
+            const preferredModels = [
+                ['openrouter', 'openai/gpt-4o-mini'],
+                ['gemini', 'gemini-2.5-flash'],
+                ['groq', 'llama-3.3-70b-versatile'],
+                ['ollama', 'llama3.2'],
+            ];
+            const readyModel = preferredModels.find(([provider]) => providers[provider]?.status === 'ready');
+            if (readyModel) {
+                const modelInfo = AI_MODEL_DEFINITIONS[readyModel[1]];
+                if (aiActiveIdentity) aiActiveIdentity.textContent = `Auto · ${modelInfo.name}`;
+                if (aiLabModel) aiLabModel.textContent = `Selected from available providers · ${modelInfo.subtitle}`;
+            }
+        }
 
         const aiModelBadge = document.querySelector('#ai-model-badge');
         if (aiModelBadge && data.active_provider && data.active_model) {
@@ -942,6 +985,24 @@ document.querySelectorAll('[data-format-block]').forEach((button) => {
         document.execCommand('formatBlock', false, `<${button.dataset.formatBlock}>`);
         editor.focus();
     });
+});
+
+editorFontSize?.addEventListener('change', (event) => {
+    editor?.focus();
+    document.execCommand('fontSize', false, event.target.value);
+});
+
+editorTextColor?.addEventListener('input', (event) => {
+    editor?.focus();
+    document.execCommand('foreColor', false, event.target.value);
+});
+
+editorPreviewButton?.addEventListener('click', () => {
+    if (!editor) return;
+    const isPreview = editor.classList.toggle('is-preview');
+    editor.contentEditable = String(!isPreview);
+    editorPreviewButton.textContent = isPreview ? 'Edit manuscript' : 'Preview';
+    editorPreviewButton.setAttribute('aria-pressed', String(isPreview));
 });
 
 // Layout Switcher (Studio, Focus, Review)
@@ -1684,16 +1745,16 @@ document.querySelector('#btn-excel-toggle-collapse')?.addEventListener('click', 
     e.target.textContent = excelMatrixWrapper?.classList.contains('is-collapsed') ? '+' : '−';
 });
 
-// Ask Alice (AI Agent Recommendation)
+// AI methodology recommendation
 document.querySelector('#btn-excel-ai-recommend')?.addEventListener('click', async () => {
     const btn = document.querySelector('#btn-excel-ai-recommend');
     if (!btn) return;
     const originalText = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `<span class="btn-icon">⏳</span><span class="btn-text"><strong>Alice is analyzing...</strong><small>Generating methodology matrix</small></span>`;
+    btn.innerHTML = `<span class="btn-icon">⏳</span><span class="btn-text"><strong>AI is analyzing...</strong><small>Generating methodology matrix</small></span>`;
 
     if (excelStatusBar) {
-        excelStatusBar.innerHTML = `<span style="color: #0284c7; font-weight: 700;">🤖 Alice AI Copilot is synthesizing academic methodology and section rules...</span>`;
+        excelStatusBar.innerHTML = `<span style="color: #0284c7; font-weight: 700;">🤖 AI is synthesizing academic methodology and section rules...</span>`;
     }
 
     try {
@@ -1730,7 +1791,7 @@ document.querySelector('#btn-excel-ai-recommend')?.addEventListener('click', asy
             }
 
             if (saveState) {
-                saveState.textContent = 'Alice AI methodology recommendations applied to Excel matrix';
+                saveState.textContent = 'AI methodology recommendations applied to Excel matrix';
             }
         } else {
             alert('Could not retrieve AI methodology recommendation. Using standard framework.');
@@ -1757,7 +1818,7 @@ document.querySelector('#btn-excel-apply-canvas')?.addEventListener('click', () 
         manuscriptHtml += `<h2>${escapeHtml(row.section)}</h2>\n`;
         manuscriptHtml += `<div class="manuscript-section-rule" contenteditable="false">\n`;
         manuscriptHtml += `    <span class="rule-badge-author">Author Rule</span> <strong>${escapeHtml(row.author_rule || 'Follow research plan')}</strong>\n`;
-        manuscriptHtml += `    <br><span class="rule-badge-ai">Alice AI Guideline</span> <small>${escapeHtml(row.ai_recommendation || '')}</small>\n`;
+        manuscriptHtml += `    <br><span class="rule-badge-ai">AI Guideline</span> <small>${escapeHtml(row.ai_recommendation || '')}</small>\n`;
         manuscriptHtml += `    <div style="margin-top: 5px; font-family: monospace; font-size: 10px; color: #166534;">\n`;
         manuscriptHtml += `        Methodology: ${escapeHtml(row.methodology)} · Target: ${escapeHtml(String(row.target_words))} words · Min Citations: ${escapeHtml(String(row.min_citations))}\n`;
         manuscriptHtml += `    </div>\n`;
@@ -1792,7 +1853,7 @@ document.querySelector('#btn-excel-insert-table')?.addEventListener('click', () 
     tableHtml += `            <th>Section / Chapter</th>\n`;
     tableHtml += `            <th>Methodology Paradigm</th>\n`;
     tableHtml += `            <th>Author Governance Rule</th>\n`;
-    tableHtml += `            <th>AI Rigor Guideline (Alice)</th>\n`;
+    tableHtml += `            <th>AI Rigor Guideline</th>\n`;
     tableHtml += `            <th style="text-align: right;">Target Words</th>\n`;
     tableHtml += `            <th style="text-align: right;">Cites</th>\n`;
     tableHtml += `        </tr>\n`;
@@ -1813,7 +1874,7 @@ document.querySelector('#btn-excel-insert-table')?.addEventListener('click', () 
     tableHtml += `    </tbody>\n`;
     tableHtml += `    <tfoot>\n`;
     tableHtml += `        <tr>\n`;
-    tableHtml += `            <td colspan="6"><em>Note: Methodologies recommended by Alice AI Copilot; governance rules and empirical thresholds verified and customized by study author.</em></td>\n`;
+    tableHtml += `            <td colspan="6"><em>Note: Methodologies recommended by the AI assistant; governance rules and empirical thresholds are verified and customized by the study author.</em></td>\n`;
     tableHtml += `        </tr>\n`;
     tableHtml += `    </tfoot>\n`;
     tableHtml += `</table>\n<p></p>\n`;
