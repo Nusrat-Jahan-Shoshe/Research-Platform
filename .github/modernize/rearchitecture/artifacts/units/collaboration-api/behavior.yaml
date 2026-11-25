@@ -1,0 +1,10 @@
+unit: collaboration-api
+side_effects:
+  - {source_loc: app/Http/Controllers/ProjectTaskController.php:17, effect: create task with authenticated creator, must_preserve: true}
+  - {source_loc: app/Http/Controllers/ProjectFeedbackController.php:17, effect: create feedback with authenticated author, must_preserve: true}
+branches:
+  - {source_loc: app/Http/Controllers/ProjectTaskController.php:24, condition: assignee is outside project, behavior: reject assignment, must_preserve: true}
+  - {source_loc: app/Http/Controllers/ProjectTaskController.php:45, condition: updater lacks project membership, behavior: return 403, must_preserve: true}
+error_paths:
+  - {source_loc: app/Http/Controllers/ProjectFeedbackController.php:17, trigger: version belongs to another project, outcome: validation failure, contract: 422 JSON errors, must_preserve: true}
+concurrency: {model: sync, tx_boundary: {source_loc: app/Http/Controllers/ProjectTaskController.php:17, scope: one task or feedback write, isolation: framework default, must_preserve: true}}

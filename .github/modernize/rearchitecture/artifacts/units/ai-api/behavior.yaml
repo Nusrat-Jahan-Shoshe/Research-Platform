@@ -1,0 +1,10 @@
+unit: ai-api
+side_effects:
+  - {source_loc: app/Http/Controllers/AiController.php:89, effect: issue external AI chat completion with project context, must_preserve: true}
+  - {source_loc: app/Services/AiGateway.php:477, effect: enforce HTTPS for non-local AI endpoints, must_preserve: true}
+branches:
+  - {source_loc: app/Http/Controllers/AiController.php:75, condition: OpenRouter provider selected, behavior: map friendly model names to provider IDs, must_preserve: true}
+  - {source_loc: app/Http/Controllers/AiController.php:105, condition: AI call throws, behavior: return 503 without exposing provider exception, must_preserve: true}
+error_paths:
+  - {source_loc: app/Http/Middleware/CheckAiAccess.php:20, trigger: premium-only mode and user lacks entitlement, outcome: access denied, contract: 403 JSON, must_preserve: true}
+concurrency: {model: sync, tx_boundary: {source_loc: app/Http/Controllers/AiController.php:89, scope: one outbound completion request, isolation: n/a, must_preserve: true}}

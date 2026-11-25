@@ -1,0 +1,9 @@
+unit: project-api
+side_effects:
+  - {source_loc: app/Http/Controllers/ResearchProjectController.php:196, effect: create document version and dispatch DocumentVersionCreated, must_preserve: true}
+  - {source_loc: app/Http/Controllers/ResearchProjectController.php:134, effect: update active editor presence timestamp, must_preserve: true}
+branches:
+  - {source_loc: app/Http/Middleware/EnsureProjectMember.php:20, condition: authenticated user is neither owner nor member, behavior: return 403, must_preserve: true}
+error_paths:
+  - {source_loc: app/Http/Controllers/ResearchProjectController.php:35, trigger: invalid project payload, outcome: validation response, contract: 422 JSON errors, must_preserve: true}
+concurrency: {model: sync, tx_boundary: {source_loc: app/Http/Controllers/ResearchProjectController.php:196, scope: version persistence and event dispatch, isolation: framework default, must_preserve: true}}

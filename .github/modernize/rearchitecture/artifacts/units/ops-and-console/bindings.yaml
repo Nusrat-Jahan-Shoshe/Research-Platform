@@ -1,0 +1,7 @@
+unit: ops-and-console
+bindings:
+  - {type: convention, name: Laravel console commands, source_loc: routes/console.php:13, target: Artisan commands, must_appear_in_target: true, notes: command registration by routes/console.php}
+  - {type: route-declaration, name: integration health endpoint, source_loc: routes/api.php:17, target: IntegrationHealthController, must_appear_in_target: true, notes: authenticated operational diagnostics}
+runtime_config:
+  - {key: QUEUE_CONNECTION, source_loc: config/queue.php:19, source: env, default_value: database, must_appear_in_target: true, notes: queue backend}
+  - {key: REVERB_PORT, source_loc: azure/startup.sh:22, source: env, default_value: 8081 in script, must_appear_in_target: true, notes: realtime process port}

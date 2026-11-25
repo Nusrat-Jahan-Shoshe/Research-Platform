@@ -42,11 +42,10 @@ jobs:
           key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
           restore-keys: ${{ runner.os }}-composer-
 
-      # ─── Install Production PHP Dependencies ──────────────────────────────
-      - name: Install Composer dependencies (production)
+      # ─── Install PHP Dependencies for validation ──────────────────────────
+      - name: Install Composer dependencies
         run: |
           composer install \
-            --no-dev \
             --prefer-dist \
             --no-interaction \
             --optimize-autoloader
@@ -76,6 +75,27 @@ jobs:
           VITE_REVERB_HOST: ${{ secrets.REVERB_HOST || format('{0}.azurewebsites.net', secrets.AZURE_APP_NAME) }}
           VITE_REVERB_PORT: "443"
           VITE_REVERB_SCHEME: https
+
+      # ─── Validate before packaging/deploying ─────────────────────────────
+      - name: Run application tests
+        env:
+          DB_CONNECTION: sqlite
+          DB_DATABASE: database/database.sqlite
+        run: |
+          mkdir -p database
+          touch database/database.sqlite
+          cp .env.example .env
+          php artisan key:generate --force
+          php artisan migrate --force
+          php artisan test --compact
+
+      - name: Install production Composer dependencies
+        run: |
+          composer install \
+            --no-dev \
+            --prefer-dist \
+            --no-interaction \
+            --optimize-autoloader
 
       # ─── Create a minimal .env for artisan optimize commands ─────────────
       - name: Prepare production .env

@@ -1,0 +1,9 @@
+unit: citation-io
+side_effects:
+  - {source_loc: app/Http/Controllers/CitationController.php:150, effect: parse and persist each BibTeX entry with generated key/tag, must_preserve: true}
+  - {source_loc: app/Http/Controllers/CitationController.php:219, effect: call Crossref DOI endpoint, must_preserve: true}
+branches:
+  - {source_loc: app/Http/Controllers/CitationController.php:161, condition: no BibTeX text or file, behavior: return 422, must_preserve: true}
+error_paths:
+  - {source_loc: app/Http/Controllers/CitationController.php:219, trigger: Crossref timeout or non-success, outcome: manual-entry response, contract: 404 JSON with found=false, must_preserve: true}
+concurrency: {model: sync, tx_boundary: {source_loc: app/Http/Controllers/CitationController.php:168, scope: import entries, isolation: framework default, must_preserve: true}}

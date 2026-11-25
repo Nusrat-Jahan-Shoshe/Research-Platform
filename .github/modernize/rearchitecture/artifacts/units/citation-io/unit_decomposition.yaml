@@ -1,0 +1,4 @@
+unit: citation-io
+commit: false
+candidate_splits:
+  - {id: app/Http/Controllers/CitationController.php:15-284, drivers: [protocol_split, concern_split], rationale: bibliographic persistence, BibTeX parsing, RIS/BibTeX serialization, and Crossref lookup have separate external contracts and resilience needs., source_slice: {file: app/Http/Controllers/CitationController.php, lines: [15, 284]}}

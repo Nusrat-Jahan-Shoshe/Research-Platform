@@ -150,4 +150,22 @@ BIB;
             'key' => 'devlin2018bert',
         ]);
     }
+
+    public function test_reimporting_the_same_bibtex_entry_is_idempotent(): void
+    {
+        $user = User::factory()->create();
+        $project = ResearchProject::create([
+            'owner_id' => $user->id,
+            'title' => 'Idempotent Citation Import',
+        ]);
+        $project->members()->attach($user->id, ['role' => 'student']);
+
+        $bibtex = '@article{smith2024, title={Updated title}, author={Smith, Jane}, year={2024}}';
+
+        $this->actingAs($user)->postJson("/api/v1/projects/{$project->id}/citations/import-bibtex", ['bibtex' => $bibtex])->assertOk();
+        $this->actingAs($user)->postJson("/api/v1/projects/{$project->id}/citations/import-bibtex", ['bibtex' => $bibtex])->assertOk();
+
+        $this->assertDatabaseCount('citations', 1);
+        $this->assertDatabaseHas('citations', ['key' => 'smith2024', 'title' => 'Updated title']);
+    }
 }

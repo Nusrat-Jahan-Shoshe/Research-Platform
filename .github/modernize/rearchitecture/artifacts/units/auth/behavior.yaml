@@ -1,0 +1,8 @@
+unit: auth
+side_effects:
+  - {source_loc: app/Http/Controllers/AuthController.php:51, effect: authenticate user and regenerate session, must_preserve: true}
+branches:
+  - {source_loc: app/Http/Controllers/AuthController.php:65, condition: missing ORCID on registration, behavior: reject account access with validation error, must_preserve: true}
+error_paths:
+  - {source_loc: app/Http/Controllers/AuthController.php:51, trigger: invalid credentials, outcome: redirect back with email error, contract: 302 redirect/session errors, must_preserve: true}
+concurrency: {model: sync, tx_boundary: {source_loc: app/Http/Controllers/AuthController.php:51, scope: authentication and session regeneration, isolation: framework default, must_preserve: true}}

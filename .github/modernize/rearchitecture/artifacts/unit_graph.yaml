@@ -1,0 +1,161 @@
+units:
+  - name: auth
+    trigger: route
+    trigger_detail: "GET/POST /login and /register; POST /logout"
+    source_anchors:
+      - path: routes/web.php
+        line: 9
+      - path: app/Http/Controllers/AuthController.php
+        line: 14
+    exported_signature:
+      - method: "RedirectResponse AuthController.store(Request)"
+        source_loc: app/Http/Controllers/AuthController.php:51
+        stability: must_preserve
+    dynamic_entrypoints: []
+    depends_on: []
+    shared_refs:
+      - module: auth-session
+        used_fields: [user, session]
+  - name: dashboard-and-pages
+    trigger: page
+    trigger_detail: "GET /, /dashboard, /projects/{project}, /tasks, /feedback"
+    source_anchors:
+      - path: resources/views/dashboard.blade.php
+        line: 1
+      - path: resources/views/project-workspace.blade.php
+        line: 1
+    exported_signature: []
+    dynamic_entrypoints: []
+    depends_on:
+      - {unit: project-api, via: project payload API}
+      - {unit: collaboration-api, via: tasks and feedback API}
+    shared_refs:
+      - module: project-membership
+        used_fields: [project, user]
+  - name: project-api
+    trigger: api
+    trigger_detail: "GET/POST /api/v1/projects/{project}; setup, formatting, presence, members, versions, architecture audit"
+    source_anchors:
+      - path: routes/api.php
+        line: 15
+      - path: app/Http/Controllers/ResearchProjectController.php
+        line: 14
+    exported_signature:
+      - method: "JsonResponse ResearchProjectController.show(ResearchProject)"
+        source_loc: app/Http/Controllers/ResearchProjectController.php:60
+        stability: frozen
+    dynamic_entrypoints: []
+    depends_on: []
+    shared_refs:
+      - module: project-membership
+        used_fields: [project, user]
+      - module: research-project-model
+        used_fields: [owner_id, members, documentVersions, active_editor]
+  - name: collaboration-api
+    trigger: api
+    trigger_detail: "Tasks and feedback CRUD under /api/v1"
+    source_anchors:
+      - path: app/Http/Controllers/ProjectTaskController.php
+        line: 12
+      - path: app/Http/Controllers/ProjectFeedbackController.php
+        line: 12
+    exported_signature: []
+    dynamic_entrypoints: []
+    depends_on:
+      - {unit: project-api, via: project membership and project state}
+    shared_refs:
+      - module: project-membership
+        used_fields: [project, user]
+  - name: citation-io
+    trigger: api
+    trigger_detail: "Citations list, BibTeX/RIS export, BibTeX import, DOI lookup"
+    source_anchors:
+      - path: app/Http/Controllers/CitationController.php
+        line: 15
+    exported_signature: []
+    dynamic_entrypoints: []
+    depends_on: []
+    shared_refs:
+      - module: project-membership
+        used_fields: [project, user]
+  - name: manuscript-export
+    trigger: api
+    trigger_detail: "GET /api/v1/projects/{project}/export/latex and /word"
+    source_anchors:
+      - path: app/Http/Controllers/ManuscriptExportController.php
+        line: 15
+    exported_signature: []
+    dynamic_entrypoints: []
+    depends_on:
+      - {unit: citation-io, via: citation relation and bibliography serialization}
+    shared_refs:
+      - module: research-project-model
+        used_fields: [documentVersions, citations, owner]
+  - name: media-and-papers-api
+    trigger: api
+    trigger_detail: "Media and papers list/create/delete"
+    source_anchors:
+      - path: app/Http/Controllers/ProjectMediaController.php
+        line: 13
+      - path: app/Http/Controllers/PaperController.php
+        line: 13
+    exported_signature: []
+    dynamic_entrypoints: []
+    depends_on:
+      - {unit: project-api, via: project membership and project state}
+    shared_refs:
+      - module: project-membership
+        used_fields: [project, user]
+  - name: ai-api
+    trigger: api
+    trigger_detail: "GET /api/v1/ai/status; POST project AI summary, evaluate, methodology matrix"
+    source_anchors:
+      - path: app/Http/Controllers/AiController.php
+        line: 14
+      - path: app/Services/AiGateway.php
+        line: 8
+    exported_signature: []
+    dynamic_entrypoints: []
+    depends_on:
+      - {unit: project-api, via: project context and membership}
+    shared_refs:
+      - module: ai-gateway
+        used_fields: [provider, model, chat, configured]
+      - module: project-membership
+        used_fields: [project, user]
+  - name: mcp-context
+    trigger: api
+    trigger_detail: "POST /mcp/research via bearer token"
+    source_anchors:
+      - path: routes/ai.php
+        line: 7
+      - path: app/Mcp/Servers/ResearchServer.php
+        line: 8
+      - path: app/Mcp/Tools/ProjectContextTool.php
+        line: 11
+    exported_signature: []
+    dynamic_entrypoints:
+      - target: App\\Mcp\\Tools\\ProjectContextTool
+        mechanism: convention
+        source_loc: app/Mcp/Servers/ResearchServer.php:12
+    depends_on: []
+    shared_refs:
+      - module: mcp-auth
+        used_fields: [bearer_token]
+  - name: ops-and-console
+    trigger: cli
+    trigger_detail: "architecture:audit and ai:check; GET /api/v1/integrations/health"
+    source_anchors:
+      - path: routes/console.php
+        line: 13
+      - path: app/Services/IntegrationHealth.php
+        line: 8
+      - path: app/Http/Controllers/IntegrationHealthController.php
+        line: 11
+    exported_signature: []
+    dynamic_entrypoints: []
+    depends_on:
+      - {unit: ai-api, via: shared AI gateway health and model configuration}
+    shared_refs:
+      - module: ai-gateway
+        used_fields: [provider, model, models]

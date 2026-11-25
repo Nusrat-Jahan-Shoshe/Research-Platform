@@ -1,0 +1,10 @@
+unit: ops-and-console
+side_effects:
+  - {source_loc: 'startup.sh:26', effect: start queue worker on application boot, must_preserve: true}
+  - {source_loc: 'startup.sh:36', effect: start Reverb server on application boot, must_preserve: true}
+branches:
+  - {source_loc: app/Services/IntegrationHealth.php:21, condition: AI not configured, behavior: report not_configured without outbound call, must_preserve: true}
+  - {source_loc: app/Services/IntegrationHealth.php:52, condition: Supabase missing credentials, behavior: report optional integration not_configured, must_preserve: true}
+error_paths:
+  - {source_loc: app/Services/IntegrationHealth.php:37, trigger: provider models request fails, outcome: report unreachable instead of throwing, contract: health JSON, must_preserve: true}
+concurrency: {model: process, tx_boundary: {source_loc: 'startup.sh:26', scope: 'none; process lifecycle is external', isolation: n/a, must_preserve: true}}

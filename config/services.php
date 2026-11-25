@@ -68,6 +68,7 @@ return [
         'timeout' => env('AI_TIMEOUT', 30),
         'connect_timeout' => env('AI_CONNECT_TIMEOUT', 5),
         'temperature' => env('AI_TEMPERATURE', 0.2),
+        'health_cache_ttl' => env('AI_HEALTH_CACHE_TTL', 30),
     ],
 
     'openrouter' => [
@@ -108,6 +109,7 @@ return [
 
     'mcp' => [
         'access_token' => env('MCP_ACCESS_TOKEN'),
+        'allowed_project_ids' => env('MCP_ALLOWED_PROJECT_IDS', ''),
     ],
 
 ];

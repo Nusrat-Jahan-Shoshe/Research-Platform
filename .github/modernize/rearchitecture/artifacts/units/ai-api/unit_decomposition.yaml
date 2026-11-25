@@ -1,0 +1,4 @@
+unit: ai-api
+commit: false
+candidate_splits:
+  - {id: app/Services/AiGateway.php:8-500, drivers: [protocol_split, concern_split, nfr_split], rationale: provider discovery, health probing, transport security, model selection, and completion requests have different latency, retry, and cost characteristics., source_slice: {file: app/Services/AiGateway.php, lines: [8, 500]}}

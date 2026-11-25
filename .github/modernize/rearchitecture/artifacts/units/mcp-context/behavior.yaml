@@ -1,0 +1,8 @@
+unit: mcp-context
+side_effects: []
+branches:
+  - {source_loc: app/Http/Middleware/EnsureMcpAccess.php:19, condition: bearer token missing or mismatched, behavior: return 401, must_preserve: true}
+  - {source_loc: app/Mcp/Tools/ProjectContextTool.php:15, condition: project_id invalid, behavior: validation failure, must_preserve: true}
+error_paths:
+  - {source_loc: app/Mcp/Tools/ProjectContextTool.php:20, trigger: requested project not authorized to caller, outcome: deny context disclosure, contract: authorization error, must_preserve: true}
+concurrency: {model: sync, tx_boundary: {source_loc: app/Mcp/Tools/ProjectContextTool.php:20, scope: read-only project graph query, isolation: framework default, must_preserve: true}}

@@ -1,0 +1,39 @@
+flows:
+  - name: authenticated-session
+    writer: {unit: auth, source_loc: app/Http/Controllers/AuthController.php:51}
+    reader: {unit: dashboard-and-pages, source_loc: routes/web.php:15}
+    pairing: matched
+    must_preserve: true
+    verification_hint: authenticate in a feature test and request dashboard/project page
+  - name: project-membership-guard
+    writer: {unit: project-api, source_loc: app/Http/Middleware/EnsureProjectMember.php:20}
+    reader: {unit: citation-io, source_loc: routes/api.php:20}
+    pairing: matched
+    must_preserve: true
+    verification_hint: member succeeds and unrelated authenticated user receives 403
+  - name: latest-version-to-export
+    writer: {unit: project-api, source_loc: app/Http/Controllers/ResearchProjectController.php:196}
+    reader: {unit: manuscript-export, source_loc: app/Http/Controllers/ManuscriptExportController.php:20}
+    pairing: matched
+    must_preserve: true
+    verification_hint: create two versions and assert export contains latest HTML
+  - name: browser-ai-model-preference
+    writer: {unit: dashboard-and-pages, source_loc: resources/js/workspace.js:52}
+    reader: {unit: ai-api, source_loc: resources/js/workspace.js:300}
+    pairing: dynamic
+    must_preserve: true
+    must_confirm: runtime
+    verification_hint: reload workspace and verify auto/manual model request payload
+  - name: active-editor-presence
+    writer: {unit: project-api, source_loc: app/Http/Controllers/ResearchProjectController.php:134}
+    reader: {unit: dashboard-and-pages, source_loc: resources/js/workspace.js:730}
+    pairing: matched
+    must_preserve: true
+    verification_hint: update presence and reload project workspace
+  - name: queue-worker-per-instance
+    writer: {unit: ops-and-console, source_loc: startup.sh:26}
+    reader: {unit: ops-and-console, source_loc: azure/startup.sh:26}
+    pairing: external
+    must_preserve: true
+    must_confirm: runtime
+    verification_hint: inspect deployed instance count and queue worker process count; avoid web-instance worker duplication

@@ -1,0 +1,7 @@
+unit: ai-api
+bindings:
+  - {type: route-declaration, name: AI routes, source_loc: routes/api.php:44, target: AiController, must_appear_in_target: true, notes: auth, project membership, and ai.access middleware}
+runtime_config:
+  - {key: AI_BASE_URL, source_loc: config/services.php:19, source: env, default_value: provider-derived, must_appear_in_target: true, notes: outbound AI endpoint}
+  - {key: AI_TIMEOUT, source_loc: app/Services/AiGateway.php:479, source: env, default_value: 30, must_appear_in_target: true, notes: outbound request timeout}
+  - {key: AI_TEMPERATURE, source_loc: app/Services/AiGateway.php:93, source: env, default_value: 0.2, must_appear_in_target: true, notes: completion sampling}

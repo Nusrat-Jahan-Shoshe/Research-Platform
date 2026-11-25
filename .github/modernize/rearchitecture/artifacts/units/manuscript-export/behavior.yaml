@@ -1,0 +1,8 @@
+unit: manuscript-export
+side_effects: []
+branches:
+  - {source_loc: app/Http/Controllers/ManuscriptExportController.php:20, condition: no latest version exists, behavior: emit starter manuscript content, must_preserve: true}
+  - {source_loc: app/Http/Controllers/ManuscriptExportController.php:46, condition: citations exist, behavior: append bibliography, must_preserve: true}
+error_paths:
+  - {source_loc: app/Http/Controllers/ManuscriptExportController.php:15, trigger: missing project membership, outcome: middleware rejection, contract: 403, must_preserve: true}
+concurrency: {model: sync, tx_boundary: {source_loc: app/Http/Controllers/ManuscriptExportController.php:20, scope: read latest version and citations, isolation: framework default, must_preserve: true}}

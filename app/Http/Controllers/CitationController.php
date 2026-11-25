@@ -6,6 +6,7 @@ use App\Models\Citation;
 use App\Models\ResearchProject;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
@@ -165,51 +166,69 @@ class CitationController extends Controller
 
         preg_match_all('/@([a-zA-Z]+)\s*\{\s*([^,\s]+)\s*,([^@]+)\}/s', $rawText, $entries, PREG_SET_ORDER);
 
-        $imported = 0;
-        $currentCount = $project->citations()->count();
-
-        foreach ($entries as $entry) {
-            $key = trim($entry[2]);
-            $body = $entry[3];
-
-            $extractField = function (string $name) use ($body): string {
-                if (preg_match('/'.$name.'\s*=\s*[\{"]([^"\}]+)[\}"]/i', $body, $match)) {
-                    return trim($match[1]);
-                }
-                if (preg_match('/'.$name.'\s*=\s*([0-9a-zA-Z]+)/i', $body, $match)) {
-                    return trim($match[1]);
-                }
-
-                return '';
-            };
-
-            $title = $extractField('title') ?: $key;
-            $authors = $extractField('author') ?: 'Unknown Author';
-            $year = $extractField('year') ?: date('Y');
-            $journal = $extractField('journal') ?: ($extractField('booktitle') ?: 'Academic Reference');
-            $doi = $extractField('doi');
-            $url = $extractField('url');
-
-            $currentCount++;
-            $project->citations()->create([
-                'key' => Str::slug($key) ?: 'ref'.$currentCount,
-                'title' => Str::limit($title, 250),
-                'authors' => Str::limit($authors, 250),
-                'year' => Str::limit($year, 20),
-                'source' => Str::limit($journal, 250),
-                'doi' => Str::limit($doi, 250),
-                'url' => Str::limit($url, 490),
-                'in_text_tag' => "[{$currentCount}]",
-                'added_by_id' => $request->user()?->id,
-            ]);
-
-            $imported++;
+        if ($entries === []) {
+            return response()->json(['message' => 'No valid BibTeX entries were found.'], 422);
         }
+
+        [$imported, $totalCitations] = DB::transaction(function () use ($entries, $project, $request): array {
+            $imported = 0;
+            $currentCount = $project->citations()->count();
+
+            foreach ($entries as $entry) {
+                $key = trim($entry[2]);
+                $body = $entry[3];
+
+                $extractField = function (string $name) use ($body): string {
+                    if (preg_match('/'.$name.'\s*=\s*[\{"]([^"\}]+)[\}"]/i', $body, $match)) {
+                        return trim($match[1]);
+                    }
+                    if (preg_match('/'.$name.'\s*=\s*([0-9a-zA-Z]+)/i', $body, $match)) {
+                        return trim($match[1]);
+                    }
+
+                    return '';
+                };
+
+                $title = $extractField('title') ?: $key;
+                $authors = $extractField('author') ?: 'Unknown Author';
+                $year = $extractField('year') ?: date('Y');
+                $journal = $extractField('journal') ?: ($extractField('booktitle') ?: 'Academic Reference');
+                $doi = $extractField('doi');
+                $url = $extractField('url');
+
+                $normalizedKey = Str::slug($key) ?: 'ref'.($currentCount + 1);
+                $citation = $project->citations()->where('key', $normalizedKey)->first();
+                if (! $citation) {
+                    $currentCount++;
+                }
+
+                $attributes = [
+                    'key' => $normalizedKey,
+                    'title' => Str::limit($title, 250),
+                    'authors' => Str::limit($authors, 250),
+                    'year' => Str::limit($year, 20),
+                    'source' => Str::limit($journal, 250),
+                    'doi' => Str::limit($doi, 250),
+                    'url' => Str::limit($url, 490),
+                    'added_by_id' => $request->user()?->id,
+                ];
+
+                if ($citation) {
+                    $citation->update($attributes);
+                } else {
+                    $project->citations()->create($attributes + ['in_text_tag' => "[{$currentCount}]"]);
+                }
+
+                $imported++;
+            }
+
+            return [$imported, $project->citations()->count()];
+        });
 
         return response()->json([
             'message' => "Successfully imported {$imported} citation".($imported === 1 ? '' : 's').'.',
             'imported_count' => $imported,
-            'total_citations' => $project->citations()->count(),
+            'total_citations' => $totalCitations,
         ]);
     }
 

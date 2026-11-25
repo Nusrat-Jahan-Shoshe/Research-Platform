@@ -1,0 +1,5 @@
+unit: media-and-papers-api
+bindings:
+  - {type: route-declaration, name: media and paper routes, source_loc: routes/api.php:37, target: media/paper controllers, must_appear_in_target: true, notes: project membership protection}
+runtime_config:
+  - {key: FILESYSTEM_DISK, source_loc: app/Http/Controllers/ProjectMediaController.php:38, source: env, default_value: local, must_appear_in_target: true, notes: media storage disk}

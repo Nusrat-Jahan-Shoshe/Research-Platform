@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
@@ -162,12 +163,16 @@ class AiGateway
      */
     public function probeAllProviders(): array
     {
-        return [
-            'openrouter' => $this->probeOpenRouter(),
-            'gemini' => $this->probeGemini(),
-            'groq' => $this->probeGroq(),
-            'ollama' => $this->probeOllama(),
-        ];
+        return Cache::remember(
+            'coauth.ai.provider-probes',
+            now()->addSeconds((int) config('services.ai.health_cache_ttl', 30)),
+            fn (): array => [
+                'openrouter' => $this->probeOpenRouter(),
+                'gemini' => $this->probeGemini(),
+                'groq' => $this->probeGroq(),
+                'ollama' => $this->probeOllama(),
+            ],
+        );
     }
 
     /**

@@ -1,0 +1,9 @@
+unit: dashboard-and-pages
+side_effects:
+  - {source_loc: resources/js/workspace.js:608, effect: load project and related lists into workspace UI, must_preserve: true}
+branches:
+  - {source_loc: routes/web.php:19, condition: user is not a project member, behavior: deny workspace page, must_preserve: true}
+  - {source_loc: resources/js/workspace.js:730, condition: active editor is fresh, behavior: render collaborator presence, must_preserve: true}
+error_paths:
+  - {source_loc: resources/js/workspace.js:694, trigger: workspace API failure, outcome: log error and retain UI fallback, contract: browser-visible failure state, must_preserve: true}
+concurrency: {model: event-loop, tx_boundary: {source_loc: resources/js/workspace.js:608, scope: parallel related API loads, isolation: n/a, must_preserve: true}}

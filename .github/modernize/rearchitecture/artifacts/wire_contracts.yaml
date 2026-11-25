@@ -1,0 +1,71 @@
+contracts:
+  - name: project-json-api
+    unit: project-api
+    type: rest
+    stability: frozen
+    source_loc: routes/api.php:21
+    contract:
+      method: "GET /api/v1/projects/{project}"
+      path: /api/v1/projects/{project}
+      request: authenticated project member
+      response: data object containing project, members, versions, tasks, feedback, papers, citations, media
+      error: 401 unauthenticated; 403 non-member; 404 missing project
+      auth: Laravel session auth plus project.member middleware
+    target_contract: {method: "GET /api/v1/projects/{project}", notes: preserve JSON envelope and membership guard}
+    semantic_divergence: []
+  - name: ai-summary
+    unit: ai-api
+    type: rest
+    stability: must_preserve
+    source_loc: routes/api.php:44
+    contract:
+      method: "POST /api/v1/projects/{project}/ai/summary"
+      path: /api/v1/projects/{project}/ai/summary
+      request: "instruction, model, temperature, depth, checklist"
+      response: "data.model, provider, temperature, content"
+      error: 401/403 access; 422 validation; 503 AI unavailable
+      auth: Laravel session auth, project membership, ai.access
+    target_contract: {method: "POST /api/v1/projects/{project}/ai/summary", notes: keep bounded validation and 503 fallback}
+    semantic_divergence: []
+  - name: citation-import-export
+    unit: citation-io
+    type: file
+    stability: must_preserve
+    source_loc: routes/api.php:30
+    contract:
+      method: "GET/POST citation export/import"
+      path: /api/v1/projects/{project}/citations/{export|import-bibtex}
+      request: "download/format query or bibtex text/file"
+      response: "JSON count/data or downloadable BibTeX/RIS"
+      error: 422 invalid input; 403 non-member; 404 missing citation/project
+      auth: Laravel session auth and project membership
+    target_contract: {method: "preserve BibTeX/RIS import/export", notes: preserve citation keys and in-text tags}
+    semantic_divergence: []
+  - name: manuscript-downloads
+    unit: manuscript-export
+    type: file
+    stability: must_preserve
+    source_loc: routes/api.php:35
+    contract:
+      method: "GET /api/v1/projects/{project}/export/{latex|word}"
+      path: /api/v1/projects/{project}/export/{latex|word}
+      request: authenticated project member
+      response: downloadable .tex or .doc with content disposition
+      error: 403 non-member; 404 missing project
+      auth: Laravel session auth and project membership
+    target_contract: {method: "preserve downloadable LaTeX and Word-compatible HTML", notes: escape project content before serialization}
+    semantic_divergence: []
+  - name: mcp-project-context
+    unit: mcp-context
+    type: sdk
+    stability: must_preserve
+    source_loc: app/Mcp/Tools/ProjectContextTool.php:15
+    contract:
+      method: "MCP web POST /mcp/research"
+      path: /mcp/research
+      request: "tool call with project_id integer"
+      response: "project, owner, members, open_tasks, open_feedback, papers, citations, media"
+      error: 401 invalid bearer; authorization failure must not disclose project context
+      auth: MCP bearer token plus project authorization
+    target_contract: {method: "MCP ProjectContextTool.handle(Request)", notes: authorize requested project before eager loading and response}
+    semantic_divergence: []

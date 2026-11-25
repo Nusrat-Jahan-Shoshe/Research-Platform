@@ -1,0 +1,4 @@
+unit: ops-and-console
+commit: false
+candidate_splits:
+  - {id: startup.sh:1-40, drivers: [execution_model_split, nfr_split], rationale: web boot, database migration, queue worker, and Reverb lifecycle are coupled in one per-instance shell process and scale independently., source_slice: {file: startup.sh, lines: [1, 40]}}

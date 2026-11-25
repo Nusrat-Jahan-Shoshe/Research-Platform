@@ -1,0 +1,5 @@
+unit: dashboard-and-pages
+bindings:
+  - {type: route-declaration, name: authenticated web pages, source_loc: routes/web.php:15, target: Blade views, must_appear_in_target: true, notes: auth and project.member guards}
+  - {type: convention, name: Vite workspace entrypoint, source_loc: resources/views/project-workspace.blade.php:10, target: resources/js/workspace.js, must_appear_in_target: true, notes: interactive editor binds to DOM ids}
+runtime_config: []

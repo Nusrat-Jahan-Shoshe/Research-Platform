@@ -7,9 +7,6 @@ set -e
 APP_DIR="/home/site/wwwroot"
 cd "$APP_DIR"
 
-echo "==> [startup] Running database migrations..."
-php artisan migrate --force
-
 echo "==> [startup] Caching configuration, routes, and views..."
 php artisan config:cache
 php artisan route:cache
@@ -23,21 +20,22 @@ mkdir -p storage/framework/{sessions,views,cache}
 mkdir -p bootstrap/cache
 chmod -R 775 storage bootstrap/cache
 
-echo "==> [startup] Starting queue worker in background..."
-nohup php artisan queue:work \
-    --tries=3 \
-    --timeout=90 \
-    --sleep=3 \
-    --max-jobs=500 \
-    >> /home/LogFiles/queue-worker.log 2>&1 &
+if [ "${QUEUE_WORKER_ENABLED:-false}" = "true" ]; then
+    echo "==> [startup] Starting explicitly enabled queue worker..."
+    nohup php artisan queue:work \
+        --tries="${QUEUE_WORKER_TRIES:-3}" \
+        --timeout="${QUEUE_WORKER_TIMEOUT:-90}" \
+        --sleep="${QUEUE_WORKER_SLEEP:-3}" \
+        --max-jobs="${QUEUE_WORKER_MAX_JOBS:-500}" \
+        >> /home/LogFiles/queue-worker.log 2>&1 &
+fi
 
-echo "==> [startup] Queue worker PID: $!"
+if [ "${REVERB_ENABLED:-false}" = "true" ]; then
+    echo "==> [startup] Starting explicitly enabled Laravel Reverb server..."
+    nohup php artisan reverb:start \
+        --host="${REVERB_INTERNAL_HOST:-0.0.0.0}" \
+        --port="${REVERB_INTERNAL_PORT:-8081}" \
+        >> /home/LogFiles/reverb.log 2>&1 &
+fi
 
-echo "==> [startup] Starting Laravel Reverb WebSocket server on port 8080..."
-nohup php artisan reverb:start \
-    --host="0.0.0.0" \
-    --port="8080" \
-    >> /home/LogFiles/reverb.log 2>&1 &
-
-echo "==> [startup] Reverb PID: $!"
-echo "==> [startup] All background services started. Handing off to PHP-FPM..."
+echo "==> [startup] Web instance ready. Queue/Reverb must be enabled only on dedicated worker instances."

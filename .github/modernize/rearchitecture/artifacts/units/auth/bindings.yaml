@@ -1,0 +1,4 @@
+unit: auth
+bindings:
+  - {type: route-declaration, name: guest auth routes, source_loc: routes/web.php:9, target: AuthController, must_appear_in_target: true, notes: guest middleware for login/register and auth middleware for logout}
+runtime_config: []

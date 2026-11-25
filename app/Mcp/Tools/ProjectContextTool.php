@@ -18,6 +18,17 @@ class ProjectContextTool extends Tool
             'project_id' => ['required', 'integer', 'exists:research_projects,id'],
         ]);
 
+        $allowedProjectIds = array_values(array_filter(array_map(
+            static fn (string $projectId): int => (int) trim($projectId),
+            explode(',', (string) config('services.mcp.allowed_project_ids', '')),
+        )));
+
+        abort_unless(
+            $allowedProjectIds !== [] && in_array((int) $validated['project_id'], $allowedProjectIds, true),
+            403,
+            'This MCP token is not authorized for the requested research project.'
+        );
+
         $project = ResearchProject::query()
             ->with([
                 'owner:id,name',

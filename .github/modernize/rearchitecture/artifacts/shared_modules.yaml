@@ -1,0 +1,58 @@
+modules:
+  - name: project-membership
+    kind: utility
+    source_loc: app/Http/Middleware/EnsureProjectMember.php:13
+    used_by_units: [dashboard-and-pages, project-api, collaboration-api, citation-io, media-and-papers-api, ai-api]
+    fields:
+      - {name: project, type: App\\Models\\ResearchProject}
+      - {name: user, type: App\\Models\\User}
+      - {name: membership_check, type: boolean}
+    god_class: false
+    split_candidate: false
+    migration_strategy: wrap
+  - name: research-project-model
+    kind: god-class
+    source_loc: app/Models/ResearchProject.php:11
+    used_by_units: [project-api, manuscript-export]
+    fields:
+      - {name: owner_id, type: int}
+      - {name: members, type: BelongsToMany}
+      - {name: documentVersions, type: HasMany}
+      - {name: active_editor, type: presence state}
+      - {name: citations, type: HasMany}
+      - {name: owner, type: BelongsTo}
+    god_class: true
+    split_candidate: true
+    migration_strategy: wrap
+  - name: ai-gateway
+    kind: utility
+    source_loc: app/Services/AiGateway.php:8
+    used_by_units: [ai-api, ops-and-console]
+    fields:
+      - {name: provider, type: string}
+      - {name: model, type: string}
+      - {name: chat, type: external HTTP call}
+      - {name: configured, type: boolean}
+      - {name: models, type: external HTTP call}
+    god_class: true
+    split_candidate: true
+    migration_strategy: split
+  - name: auth-session
+    kind: store
+    source_loc: app/Http/Controllers/AuthController.php:51
+    used_by_units: [auth]
+    fields:
+      - {name: user, type: App\\Models\\User}
+      - {name: session, type: database session}
+    god_class: false
+    split_candidate: false
+    migration_strategy: wrap
+  - name: mcp-auth
+    kind: utility
+    source_loc: app/Http/Middleware/EnsureMcpAccess.php:13
+    used_by_units: [mcp-context]
+    fields:
+      - {name: bearer_token, type: string}
+    god_class: false
+    split_candidate: false
+    migration_strategy: wrap

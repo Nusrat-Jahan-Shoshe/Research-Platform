@@ -1,0 +1,9 @@
+unit: media-and-papers-api
+side_effects:
+  - {source_loc: app/Http/Controllers/ProjectMediaController.php:38, effect: store uploaded file on configured public disk, must_preserve: true}
+  - {source_loc: app/Http/Controllers/ProjectMediaController.php:47, effect: persist media metadata and figure number, must_preserve: true}
+branches:
+  - {source_loc: app/Http/Controllers/ProjectMediaController.php:42, condition: no image file and no image URL, behavior: return 422, must_preserve: true}
+error_paths:
+  - {source_loc: app/Http/Controllers/ProjectMediaController.php:20, trigger: invalid image payload, outcome: validation failure, contract: 422 JSON errors, must_preserve: true}
+concurrency: {model: sync, tx_boundary: {source_loc: app/Http/Controllers/ProjectMediaController.php:43, scope: figure number calculation and media write, isolation: framework default, must_preserve: true}}

@@ -1,0 +1,4 @@
+unit: collaboration-api
+bindings:
+  - {type: route-declaration, name: task and feedback routes, source_loc: routes/api.php:40, target: task/feedback controllers, must_appear_in_target: true, notes: project-scoped creates and membership-checked updates}
+runtime_config: []

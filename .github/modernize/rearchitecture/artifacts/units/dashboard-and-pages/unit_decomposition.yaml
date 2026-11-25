@@ -1,0 +1,4 @@
+unit: dashboard-and-pages
+commit: false
+candidate_splits:
+  - {id: resources/js/workspace.js:1-2200, drivers: [concern_split], rationale: workspace script combines editor, AI, import/export, collaboration, and modal behaviors; isolate concerns before changing lifecycle behavior., source_slice: {file: resources/js/workspace.js, lines: [1, 2200]}}

@@ -1,0 +1,5 @@
+unit: mcp-context
+bindings:
+  - {type: route-declaration, name: MCP web server, source_loc: routes/ai.php:7, target: ResearchServer, must_appear_in_target: true, notes: bearer middleware required}
+runtime_config:
+  - {key: MCP_ACCESS_TOKEN, source_loc: app/Http/Middleware/EnsureMcpAccess.php:17, source: env, default_value: empty, must_appear_in_target: true, notes: remote MCP bearer credential}

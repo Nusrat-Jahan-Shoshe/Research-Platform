@@ -1,0 +1,4 @@
+unit: project-api
+bindings:
+  - {type: route-declaration, name: project API routes, source_loc: routes/api.php:15, target: ResearchProjectController, must_appear_in_target: true, notes: auth plus project.member on project routes}
+runtime_config: []

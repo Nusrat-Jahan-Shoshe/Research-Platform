@@ -1,0 +1,4 @@
+unit: manuscript-export
+bindings:
+  - {type: route-declaration, name: manuscript export routes, source_loc: routes/api.php:35, target: ManuscriptExportController, must_appear_in_target: true, notes: project.member protected downloads}
+runtime_config: []

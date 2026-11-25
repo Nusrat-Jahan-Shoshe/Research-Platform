@@ -1,0 +1,4 @@
+unit: project-api
+commit: false
+candidate_splits:
+  - {id: app/Http/Controllers/ResearchProjectController.php:104-223, drivers: [concern_split, lifecycle_split], rationale: setup, formatting, presence, membership, versioning, and audit operations share one controller but have distinct change and failure semantics., source_slice: {file: app/Http/Controllers/ResearchProjectController.php, lines: [104, 223]}}

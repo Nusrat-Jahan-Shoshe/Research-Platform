@@ -234,6 +234,7 @@ class CitationAndMediaApiTest extends TestCase
             'owner_id' => $user->id,
             'title' => 'MCP Context Test',
         ]);
+        config()->set('services.mcp.allowed_project_ids', (string) $project->id);
         $project->members()->attach($user->id, ['role' => 'student']);
 
         Citation::factory()->create([

@@ -1,0 +1,4 @@
+unit: citation-io
+bindings:
+  - {type: route-declaration, name: citation routes, source_loc: routes/api.php:29, target: CitationController, must_appear_in_target: true, notes: member-scoped import/export and DOI lookup}
+runtime_config: []
