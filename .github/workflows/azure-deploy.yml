@@ -144,7 +144,7 @@ jobs:
           npm ci --ignore-scripts
           npm run build
         env:
-          VITE_APP_NAME: "Co-Auth"
+          VITE_APP_NAME: ${{ secrets.APP_NAME || 'Co-Auth' }}
           VITE_REVERB_APP_KEY: ${{ secrets.REVERB_APP_KEY }}
           VITE_REVERB_HOST: ${{ secrets.REVERB_HOST || format('{0}.azurewebsites.net', secrets.AZURE_APP_NAME) }}
           VITE_REVERB_PORT: "443"
@@ -154,11 +154,23 @@ jobs:
         if: steps.check-azure.outputs.ready == 'true'
         env:
           SECRET_APP_KEY: ${{ secrets.APP_KEY }}
+          SECRET_APP_NAME: ${{ secrets.APP_NAME }}
+          SECRET_AZURE_APP_NAME: ${{ secrets.AZURE_APP_NAME }}
           SECRET_OPENROUTER_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          SECRET_REVERB_KEY: ${{ secrets.REVERB_APP_KEY }}
+          SECRET_REVERB_HOST: ${{ secrets.REVERB_HOST }}
         run: |
           cp .env.example .env
           sed -i "s|APP_ENV=.*|APP_ENV=production|" .env
           sed -i "s|APP_DEBUG=.*|APP_DEBUG=false|" .env
+          if [ -n "$SECRET_APP_NAME" ]; then
+            sed -i "s|APP_NAME=.*|APP_NAME=\"${SECRET_APP_NAME}\"|" .env
+          else
+            sed -i "s|APP_NAME=.*|APP_NAME=\"Co-Auth\"|" .env
+          fi
+          if [ -n "$SECRET_AZURE_APP_NAME" ]; then
+            sed -i "s|APP_URL=.*|APP_URL=https://${SECRET_AZURE_APP_NAME}.azurewebsites.net|" .env
+          fi
           if [ -n "$SECRET_APP_KEY" ]; then
             sed -i "s|APP_KEY=.*|APP_KEY=${SECRET_APP_KEY}|" .env
           else
@@ -173,6 +185,14 @@ jobs:
           sed -i "s|OPENROUTER_BASE_URL=.*|OPENROUTER_BASE_URL=https://openrouter.ai/api/v1|" .env
           sed -i "s|OPENROUTER_MODEL=.*|OPENROUTER_MODEL=openai/gpt-4o-mini|" .env
           sed -i "s|AI_FREE_FOR_ALL=.*|AI_FREE_FOR_ALL=true|" .env
+          if [ -n "$SECRET_REVERB_KEY" ]; then
+            sed -i "s|REVERB_APP_KEY=.*|REVERB_APP_KEY=${SECRET_REVERB_KEY}|" .env
+          fi
+          if [ -n "$SECRET_REVERB_HOST" ]; then
+            sed -i "s|REVERB_HOST=.*|REVERB_HOST=\"${SECRET_REVERB_HOST}\"|" .env
+            sed -i "s|REVERB_PORT=.*|REVERB_PORT=443|" .env
+            sed -i "s|REVERB_SCHEME=.*|REVERB_SCHEME=https|" .env
+          fi
 
       - name: Strip development artifacts
         if: steps.check-azure.outputs.ready == 'true'
