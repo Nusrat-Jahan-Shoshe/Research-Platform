@@ -69,7 +69,7 @@
                             <button class="button button-quiet" id="open-theory-guide" type="button">📚 Methodology theory guide</button>
                             <button class="button button-quiet" id="trigger-arch-audit" type="button" title="Verify Binary Tree, Recursion, Graph Mapping, Linked List, Linear Search, and Hash">🛡 Audit Core Architecture</button>
                         </div>
-                        <p class="ai-result" id="ai-result" role="status"></p>
+                        <div class="ai-result" id="ai-result" role="status"></div>
                         <span class="ai-model-badge" id="ai-model-badge">Google Gemini · gemini-2.5-flash (Free Tier)</span>
                     </div>
                     <div class="workspace-progress">
@@ -366,14 +366,14 @@
                                         <thead>
                                             <tr>
                                                 <th class="excel-th-corner" title="Select all cells"></th>
-                                                <th class="excel-th-col" data-col="A" style="min-width: 190px;">A<span class="col-name">Section / Chapter</span></th>
-                                                <th class="excel-th-col" data-col="B" style="min-width: 210px;">B<span class="col-name">Methodology & Paradigm</span></th>
-                                                <th class="excel-th-col" data-col="C" style="min-width: 250px;">C<span class="col-name">AI Recommendation</span></th>
-                                                <th class="excel-th-col excel-th-author" data-col="D" style="min-width: 280px;">D<span class="col-name">Author Rules & Overrides (You Change)</span></th>
-                                                <th class="excel-th-col" data-col="E" style="min-width: 100px;">E<span class="col-name">Words</span></th>
-                                                <th class="excel-th-col" data-col="F" style="min-width: 85px;">F<span class="col-name">Cites</span></th>
-                                                <th class="excel-th-col" data-col="G" style="min-width: 130px;">G<span class="col-name">Status</span></th>
-                                                <th class="excel-th-col" data-col="H" style="min-width: 75px;">H<span class="col-name">Action</span></th>
+                                                <th class="excel-th-col" data-col="A">A<span class="col-name">Section / Chapter</span></th>
+                                                <th class="excel-th-col" data-col="B">B<span class="col-name">Methodology & Paradigm</span></th>
+                                                <th class="excel-th-col" data-col="C">C<span class="col-name">AI Recommendation</span></th>
+                                                <th class="excel-th-col excel-th-author" data-col="D">D<span class="col-name">Author Rules & Overrides (You Change)</span></th>
+                                                <th class="excel-th-col" data-col="E">E<span class="col-name">Words</span></th>
+                                                <th class="excel-th-col" data-col="F">F<span class="col-name">Cites</span></th>
+                                                <th class="excel-th-col" data-col="G">G<span class="col-name">Status</span></th>
+                                                <th class="excel-th-col" data-col="H">H<span class="col-name">Action</span></th>
                                             </tr>
                                         </thead>
                                         <tbody id="excel-tbody">

@@ -1988,11 +1988,29 @@ body.layout-review .workspace-grid { grid-template-columns: 1.1fr 0.9fr; }
     background: #ffffff;
 }
 .excel-table {
+    --excel-col-a: 230px;
+    --excel-col-b: 240px;
+    --excel-col-c: 320px;
+    --excel-col-d: 320px;
+    --excel-col-e: 100px;
+    --excel-col-f: 85px;
+    --excel-col-g: 145px;
+    --excel-col-h: 76px;
     border-collapse: collapse;
-    width: 100%;
+    width: calc(36px + var(--excel-col-a) + var(--excel-col-b) + var(--excel-col-c) + var(--excel-col-d) + var(--excel-col-e) + var(--excel-col-f) + var(--excel-col-g) + var(--excel-col-h));
+    min-width: 100%;
     table-layout: fixed;
     font-size: 11px;
 }
+.excel-table :is(th, td):nth-child(1) { width: 36px; }
+.excel-table :is(th, td):nth-child(2) { width: var(--excel-col-a); }
+.excel-table :is(th, td):nth-child(3) { width: var(--excel-col-b); }
+.excel-table :is(th, td):nth-child(4) { width: var(--excel-col-c); }
+.excel-table :is(th, td):nth-child(5) { width: var(--excel-col-d); }
+.excel-table :is(th, td):nth-child(6) { width: var(--excel-col-e); }
+.excel-table :is(th, td):nth-child(7) { width: var(--excel-col-f); }
+.excel-table :is(th, td):nth-child(8) { width: var(--excel-col-g); }
+.excel-table :is(th, td):nth-child(9) { width: var(--excel-col-h); }
 .excel-th-corner {
     width: 36px;
     background: #f3f4f6;
@@ -2013,6 +2031,31 @@ body.layout-review .workspace-grid { grid-template-columns: 1.1fr 0.9fr; }
     top: 0;
     z-index: 5;
     user-select: none;
+}
+.excel-column-resizer {
+    position: absolute;
+    top: 0;
+    right: -4px;
+    z-index: 8;
+    width: 8px;
+    height: 100%;
+    cursor: col-resize;
+    touch-action: none;
+}
+.excel-column-resizer::after {
+    position: absolute;
+    top: 25%;
+    bottom: 25%;
+    left: 3px;
+    width: 2px;
+    border-radius: 999px;
+    background: transparent;
+    content: '';
+}
+.excel-column-resizer:hover::after,
+.excel-column-resizer:focus-visible::after,
+body.is-resizing-excel-column .excel-column-resizer::after {
+    background: #107c41;
 }
 .excel-th-col .col-name {
     display: block;
@@ -2054,7 +2097,9 @@ body.layout-review .workspace-grid { grid-template-columns: 1.1fr 0.9fr; }
     color: #1f2937;
     vertical-align: middle;
     line-height: 1.4;
-    word-break: break-word;
+    overflow-wrap: normal;
+    word-break: normal;
+    hyphens: none;
     cursor: cell;
     position: relative;
     transition: background .12s ease;
@@ -2621,3 +2666,44 @@ body.layout-review .workspace-grid { grid-template-columns: 1.1fr 0.9fr; }
 .ai-chat-message strong, .ai-chat-message small { display: block; font-size: 10px; }
 .ai-chat-message small { color: var(--muted); margin-top: 2px; }
 .ai-chat-message p { white-space: pre-wrap; font-size: 11px; line-height: 1.6; margin: 6px 0 0; }
+.ai-output-content { color: #fff; font-size: calc(1em + 2px); line-height: 1.7; }
+.ai-output-content p { color: inherit; font-size: inherit; line-height: inherit; margin: 0 0 .7rem; white-space: pre-wrap; }
+.ai-output-content p:last-child { margin-bottom: 0; }
+.ai-output-content .ai-output-heading { color: #fff; font-size: inherit; line-height: 1.35; margin: .75rem 0 .35rem; font-weight: 800; }
+.ai-output-content .ai-output-heading:first-child { margin-top: 0; }
+.ai-chat-message-content { margin-top: 6px; white-space: pre-wrap; font-size: 11px; line-height: 1.6; }
+/* Keep intrinsic editor tools from widening the page at narrow viewports. */
+.workspace-grid > .editor-panel,
+.workspace-grid > .workspace-sidebar,
+.editor-panel,
+.workspace-sidebar,
+.workspace-topbar,
+.editor-toolbar,
+.paper-layout-strip,
+.workspace-view-switcher {
+    min-width: 0;
+    overflow-x: auto;
+}
+
+.workspace-topbar,
+.editor-toolbar {
+    overflow-x: auto;
+}
+
+@media (max-width: 850px) {
+    .workspace-topbar {
+        max-width: 100%;
+        min-width: 0;
+        overflow-x: auto;
+    }
+
+    .editor-toolbar {
+        justify-content: flex-start;
+        gap: 12px;
+        overflow-x: auto;
+    }
+
+    .editor-toolbar > * {
+        flex: 0 0 auto;
+    }
+}

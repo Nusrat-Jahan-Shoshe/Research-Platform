@@ -1,3 +1,58 @@
+const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;',
+}[character]));
+
+/**
+ * Convert AI Markdown-style section markers into safe, readable output blocks.
+ *
+ * Algorithm:
+ * 1. Normalize line endings and insert a boundary before every Markdown heading marker.
+ * 2. Split the response into lines and ignore empty separators.
+ * 3. Render headings as `h3` elements and all other lines as paragraph elements.
+ * 4. Use text nodes only so model output cannot inject HTML into the workspace.
+ *
+ * @param {string} content
+ * @returns {DocumentFragment}
+ */
+const buildAiOutputFragment = (content) => {
+    const fragment = document.createDocumentFragment();
+    const normalizedContent = String(content ?? '')
+        .replace(/\r\n?/g, '\n')
+        .replace(/\s*#{2,6}\s*/g, '\n### ')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+
+    normalizedContent.split('\n').forEach((rawLine) => {
+        const line = rawLine.trim();
+        if (!line) return;
+
+        if (line.startsWith('### ')) {
+            const heading = document.createElement('h3');
+            heading.className = 'ai-output-heading';
+            heading.textContent = line.slice(4).trim();
+            fragment.appendChild(heading);
+            return;
+        }
+
+        const paragraph = document.createElement('p');
+        paragraph.textContent = line;
+        fragment.appendChild(paragraph);
+    });
+
+    return fragment;
+};
+
+const renderAiOutput = (target, content) => {
+    if (!target) return;
+
+    target.classList.add('ai-output-content');
+    target.replaceChildren(buildAiOutputFragment(content));
+};
+
 const projectId = document.body.dataset.projectId;
 const editor = document.querySelector('#editor-canvas');
 const memberList = document.querySelector('#member-list');
@@ -326,16 +381,16 @@ let runAiSummary = async (instruction, sourceButton = null) => {
 
         const content = payload.data.content || 'No response was returned.';
         appendAiChatMessage('assistant', content, payload.data.model || selectedModel);
-        if (aiResult) aiResult.textContent = content;
-        if (aiLabOutput) aiLabOutput.textContent = content;
+        renderAiOutput(aiResult, content);
+        renderAiOutput(aiLabOutput, content);
         const activeModelText = payload.data.model || selectedModel;
         const activeProviderText = payload.data.provider || 'OpenRouter';
         if (aiModelBadge) aiModelBadge.textContent = `${activeProviderText} · ${activeModelText} (Encrypted)`;
         if (aiLabModel) aiLabModel.textContent = `${activeProviderText} · ${activeModelText} (End-to-End TLS 1.3)`;
         syncModelSelection(selectedModel);
     } catch (error) {
-        if (aiResult) aiResult.textContent = error.message;
-        if (aiLabOutput) aiLabOutput.textContent = error.message;
+        renderAiOutput(aiResult, error.message);
+        renderAiOutput(aiLabOutput, error.message);
     } finally {
         buttons.forEach((button) => { button.disabled = false; });
         if (aiSummaryButton) aiSummaryButton.textContent = '✦ Ask research assistant';
@@ -348,8 +403,24 @@ const appendAiChatMessage = (role, content, model = '') => {
     aiChatHistory.querySelector('.ai-chat-empty')?.remove();
     const message = document.createElement('div');
     message.className = `ai-chat-message ${role}`;
-    message.innerHTML = `<strong>${role === 'user' ? 'You' : 'Research AI'}</strong>${model && role !== 'user' ? `<small>${model}</small>` : ''}<p></p>`;
-    message.querySelector('p').textContent = content;
+    const label = document.createElement('strong');
+    label.textContent = role === 'user' ? 'You' : 'Research AI';
+    message.appendChild(label);
+
+    if (model && role !== 'user') {
+        const modelLabel = document.createElement('small');
+        modelLabel.textContent = model;
+        message.appendChild(modelLabel);
+    }
+
+    const messageContent = document.createElement('div');
+    messageContent.className = role === 'assistant' ? 'ai-output-content' : 'ai-chat-message-content';
+    if (role === 'assistant') {
+        messageContent.appendChild(buildAiOutputFragment(content));
+    } else {
+        messageContent.textContent = content;
+    }
+    message.appendChild(messageContent);
     aiChatHistory.appendChild(message);
     aiChatHistory.scrollTop = aiChatHistory.scrollHeight;
 };
@@ -1565,6 +1636,85 @@ const excelStatRules = document.querySelector('#excel-stat-rules');
 const excelStatusBar = document.querySelector('#excel-status-bar');
 const excelMatrixWrapper = document.querySelector('#excel-matrix-wrapper');
 const paperSheetViewport = document.querySelector('.paper-sheet-viewport');
+const excelMatrixTable = document.querySelector('#excel-matrix-table');
+
+const EXCEL_COLUMN_MIN_WIDTHS = {
+    A: 190,
+    B: 210,
+    C: 250,
+    D: 280,
+    E: 100,
+    F: 85,
+    G: 130,
+    H: 75,
+};
+const EXCEL_COLUMN_WIDTH_STORAGE_KEY = 'coauth_excel_matrix_column_widths';
+
+const setExcelColumnWidth = (column, width, shouldPersist = true) => {
+    if (!excelMatrixTable || !EXCEL_COLUMN_MIN_WIDTHS[column]) return;
+
+    const normalizedWidth = Math.max(EXCEL_COLUMN_MIN_WIDTHS[column], Math.round(width));
+    excelMatrixTable.style.setProperty(`--excel-col-${column.toLowerCase()}`, `${normalizedWidth}px`);
+
+    if (!shouldPersist) return;
+
+    try {
+        const storedWidths = JSON.parse(localStorage.getItem(EXCEL_COLUMN_WIDTH_STORAGE_KEY) || '{}');
+        storedWidths[column] = normalizedWidth;
+        localStorage.setItem(EXCEL_COLUMN_WIDTH_STORAGE_KEY, JSON.stringify(storedWidths));
+    } catch (_) {}
+};
+
+const restoreExcelColumnWidths = () => {
+    try {
+        const storedWidths = JSON.parse(localStorage.getItem(EXCEL_COLUMN_WIDTH_STORAGE_KEY) || '{}');
+        Object.entries(storedWidths).forEach(([column, width]) => {
+            if (Number.isFinite(width)) setExcelColumnWidth(column, width, false);
+        });
+    } catch (_) {}
+};
+
+const setupExcelColumnResizers = () => {
+    if (!excelMatrixTable) return;
+
+    restoreExcelColumnWidths();
+    excelMatrixTable.querySelectorAll('.excel-th-col[data-col]').forEach((header) => {
+        if (header.querySelector('.excel-column-resizer')) return;
+
+        const column = header.dataset.col;
+        const resizer = document.createElement('span');
+        resizer.className = 'excel-column-resizer';
+        resizer.tabIndex = 0;
+        resizer.setAttribute('role', 'separator');
+        resizer.setAttribute('aria-orientation', 'vertical');
+        resizer.setAttribute('aria-label', `Resize ${header.querySelector('.col-name')?.textContent || column} column`);
+        header.appendChild(resizer);
+
+        resizer.addEventListener('pointerdown', (event) => {
+            event.preventDefault();
+            const startX = event.clientX;
+            const startWidth = header.getBoundingClientRect().width;
+            document.body.classList.add('is-resizing-excel-column');
+
+            const resize = (moveEvent) => setExcelColumnWidth(column, startWidth + moveEvent.clientX - startX);
+            const stopResizing = () => {
+                document.body.classList.remove('is-resizing-excel-column');
+                document.removeEventListener('pointermove', resize);
+                document.removeEventListener('pointerup', stopResizing);
+            };
+
+            document.addEventListener('pointermove', resize);
+            document.addEventListener('pointerup', stopResizing, { once: true });
+        });
+
+        resizer.addEventListener('keydown', (event) => {
+            if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+            event.preventDefault();
+            const currentWidth = header.getBoundingClientRect().width;
+            setExcelColumnWidth(column, currentWidth + (event.key === 'ArrowRight' ? 16 : -16));
+        });
+    });
+};
 
 const renderExcelMatrixTable = () => {
     if (!excelTbody) return;
@@ -1945,6 +2095,7 @@ document.querySelector('#btn-excel-export')?.addEventListener('click', () => {
 });
 
 // Initialize Excel Matrix on page load
+setupExcelColumnResizers();
 renderExcelMatrixTable();
 
 // =========================================================================
