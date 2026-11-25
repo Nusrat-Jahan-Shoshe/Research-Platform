@@ -294,4 +294,102 @@ class CoreArchitectureAndAiAccessTest extends TestCase
             ->assertJsonPath('data.overall_methodology', 'Qualitative Inquiry (Constructivism)')
             ->assertJsonPath('data.matrix.0.methodology', 'Contextual Inquiry & Problem Framing');
     }
+
+    public function test_ai_summary_supplies_full_three_member_grounded_research_context(): void
+    {
+        config()->set('services.ai.free_access', true);
+        config()->set('services.ai.base_url', 'https://openrouter.ai/api/v1');
+        config()->set('services.ai.key', 'fake-key');
+
+        $student = User::factory()->create(['name' => 'Test User']);
+        $coauthor = User::factory()->create(['name' => 'Mira Sen']);
+        $supervisor = User::factory()->create(['name' => 'Dr. Alex Kim', 'is_teacher' => true]);
+
+        $project = ResearchProject::create([
+            'owner_id' => $student->id,
+            'title' => 'Grounded Evidence Study',
+            'discipline' => 'Computer Science',
+            'methodology' => 'Design science',
+            'research_question' => 'How do shared evidence trails improve reproducibility?',
+            'expected_outcome' => 'A verified documentation workflow.',
+            'ethics_status' => 'approved',
+            'progress' => 45,
+        ]);
+
+        $project->members()->attach([
+            $student->id => ['role' => 'student'],
+            $coauthor->id => ['role' => 'co-author'],
+            $supervisor->id => ['role' => 'supervisor'],
+        ]);
+
+        $version = $project->documentVersions()->create([
+            'author_id' => $student->id,
+            'version_number' => 2,
+            'content' => ['html' => '<p>Draft methodology section.</p>', 'text' => 'Draft methodology section.'],
+        ]);
+
+        $project->tasks()->create([
+            'created_by' => $supervisor->id,
+            'assignee_id' => $coauthor->id,
+            'title' => 'Verify benchmark citations',
+            'status' => 'in_progress',
+            'priority' => 'high',
+            'due_at' => now()->addDays(3),
+        ]);
+
+        $project->feedback()->create([
+            'author_id' => $supervisor->id,
+            'document_version_id' => $version->id,
+            'body' => 'Clarify baseline sample size before evaluation.',
+            'status' => 'open',
+            'start_offset' => 10,
+            'end_offset' => 35,
+        ]);
+
+        $project->citations()->create([
+            'added_by_id' => $coauthor->id,
+            'key' => 'hevner2004',
+            'title' => 'Design Science in Information Systems Research',
+            'authors' => 'Hevner et al.',
+            'year' => '2004',
+            'doi' => '10.2307/25148625',
+            'in_text_tag' => '[1]',
+        ]);
+
+        $project->media()->create([
+            'uploaded_by_id' => $student->id,
+            'title' => 'Architecture Flowchart',
+            'caption' => 'System context flow',
+            'file_path' => '/storage/architecture.png',
+            'figure_number' => 1,
+        ]);
+
+        Http::fake([
+            'https://openrouter.ai/api/v1/chat/completions' => Http::response([
+                'model' => 'openai/gpt-4o-mini',
+                'choices' => [['message' => ['content' => 'Facts separated from recommendation.']]],
+            ], 200),
+        ]);
+
+        $this->actingAs($student)
+            ->postJson("/api/v1/projects/{$project->id}/ai/summary", [])
+            ->assertOk();
+
+        Http::assertSent(function ($request): bool {
+            $system = $request['messages'][0]['content'] ?? '';
+            $payload = json_decode($request['messages'][1]['content'] ?? '{}', true);
+
+            return str_contains($system, 'Separate Stored Project Facts')
+                && str_contains($system, 'unresolved supervisor or reviewer feedback')
+                && ($payload['project']['research_question'] ?? null) === 'How do shared evidence trails improve reproducibility?'
+                && ($payload['project']['ethics_status'] ?? null) === 'approved'
+                && count($payload['project']['collaborators'] ?? []) === 3
+                && ($payload['project']['open_tasks'][0]['priority'] ?? null) === 'high'
+                && ($payload['project']['open_tasks'][0]['assignee'] ?? null) === 'Mira Sen'
+                && ($payload['project']['open_feedback'][0]['author'] ?? null) === 'Dr. Alex Kim'
+                && ($payload['project']['open_feedback'][0]['start_offset'] ?? null) === 10
+                && ($payload['project']['figures'][0]['title'] ?? null) === 'Architecture Flowchart'
+                && ($payload['project']['current_manuscript_version']['version_number'] ?? null) === 2;
+        });
+    }
 }

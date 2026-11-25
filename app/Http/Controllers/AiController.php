@@ -35,11 +35,24 @@ class AiController extends Controller
             'checklist' => ['nullable', 'array'],
         ]);
 
-        $project->load(['members:id,name', 'tasks', 'feedback', 'papers:id,research_project_id,title,abstract,status', 'citations']);
+        $project->load([
+            'members:id,name',
+            'tasks.assignee:id,name',
+            'feedback.author:id,name',
+            'papers:id,research_project_id,title,abstract,status',
+            'citations',
+            'media',
+        ]);
+        $latestVersion = $project->documentVersions()->with('author:id,name')->latest('version_number')->first();
 
         $systemInstructions = [
             'You are a rigorous university research assistant and academic methodology auditor.',
             'Do not invent sources, findings, citations, or empirical statistics.',
+            'Separate Stored Project Facts cleanly from Recommendations.',
+            'Identify the exact stored project evidence (tasks, feedback, papers, citations, figures, or manuscript excerpts) behind each recommendation, and state clearly what evidence is missing if insufficient.',
+            'Surface unresolved supervisor or reviewer feedback before proposing new tasks.',
+            'Prefer one concrete, high-impact methodology-scoped next action tailored to the collaborators and their roles rather than a generic checklist.',
+            'Never disclose data outside the supplied project context.',
         ];
 
         $checklist = (array) ($validated['checklist'] ?? []);
@@ -94,21 +107,58 @@ class AiController extends Controller
                 [
                     'role' => 'user',
                     'content' => json_encode([
-                        'instruction' => $validated['instruction'] ?? 'Summarize the current project state and recommend the next three research actions.',
+                        'instruction' => $validated['instruction'] ?? 'Review the current paper context. Summarize the strongest unresolved research issue, identify the evidence already available for it, and recommend the next action for the three-person team. Separate stored project facts from your recommendation. If the project does not contain enough evidence, say exactly what is missing.',
                         'project' => [
                             'title' => $project->title,
                             'discipline' => $project->discipline,
                             'methodology' => $project->methodology,
                             'description' => $project->description,
+                            'research_question' => $project->research_question,
+                            'expected_outcome' => $project->expected_outcome,
+                            'ethics_status' => $project->ethics_status,
                             'progress' => $project->progress,
-                            'open_tasks' => $project->tasks->where('status', '!=', 'done')->pluck('title')->values(),
-                            'open_feedback' => $project->feedback->where('status', 'open')->pluck('body')->values(),
-                            'citations' => $project->citations->pluck('title')->take(10)->values(),
+                            'collaborators' => $project->members->map(fn ($member): array => [
+                                'name' => $member->name,
+                                'role' => $member->pivot->role ?? 'member',
+                            ])->values(),
+                            'open_tasks' => $project->tasks->where('status', '!=', 'done')->map(fn ($task): array => [
+                                'title' => $task->title,
+                                'status' => $task->status,
+                                'priority' => $task->priority,
+                                'assignee' => $task->assignee?->name,
+                                'due_at' => $task->due_at?->toDateString(),
+                            ])->values(),
+                            'open_feedback' => $project->feedback->where('status', 'open')->map(fn ($item): array => [
+                                'body' => $item->body,
+                                'author' => $item->author?->name,
+                                'status' => $item->status,
+                                'document_version_id' => $item->document_version_id,
+                                'start_offset' => $item->start_offset,
+                                'end_offset' => $item->end_offset,
+                            ])->values(),
+                            'citations' => $project->citations->take(10)->map(fn ($citation): array => [
+                                'key' => $citation->key,
+                                'in_text_tag' => $citation->in_text_tag,
+                                'title' => $citation->title,
+                                'authors' => $citation->authors,
+                                'year' => $citation->year,
+                                'doi' => $citation->doi,
+                            ])->values(),
                             'papers' => $project->papers->map(fn ($paper): array => [
                                 'title' => $paper->title,
                                 'abstract' => $paper->abstract,
                                 'status' => $paper->status,
                             ])->values(),
+                            'figures' => $project->media->map(fn ($media): array => [
+                                'figure_number' => $media->figure_number,
+                                'title' => $media->title,
+                                'caption' => $media->caption,
+                            ])->values(),
+                            'current_manuscript_version' => $latestVersion ? [
+                                'version_number' => $latestVersion->version_number,
+                                'author' => $latestVersion->author?->name,
+                                'excerpt' => mb_substr((string) ($latestVersion->content['text'] ?? strip_tags((string) ($latestVersion->content['html'] ?? ''))), 0, 2500),
+                            ] : null,
                         ],
                         'parameters' => [
                             'temperature' => $temperature,

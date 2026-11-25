@@ -70,7 +70,7 @@
                             <button class="button button-quiet" id="trigger-arch-audit" type="button" title="Verify Binary Tree, Recursion, Graph Mapping, Linked List, Linear Search, and Hash">🛡 Audit Core Architecture</button>
                         </div>
                         <div class="ai-result" id="ai-result" role="status"></div>
-                        <span class="ai-model-badge" id="ai-model-badge">Google Gemini · gemini-2.5-flash (Free Tier)</span>
+                        <span class="ai-model-badge" id="ai-model-badge">{{ config('services.ai.model') }} (Context-Grounded)</span>
                     </div>
                     <div class="workspace-progress">
                         <strong>{{ $project->progress }}%</strong>
@@ -494,7 +494,7 @@
                                 <select id="ai-model-dropdown" class="ai-model-select">
                                     <option value="auto" selected>Auto · choose the best available model</option>
                                     <optgroup label="★ Multi-Model Gateway (OpenRouter · Active)">
-                                        <option value="openai/gpt-4o-mini" selected>OpenRouter · GPT-4o Mini (Fast &amp; Accurate)</option>
+                                        <option value="openai/gpt-4o-mini">OpenRouter · GPT-4o Mini (Fast &amp; Accurate)</option>
                                         <option value="openai/gpt-4o">OpenRouter · GPT-4o (Deep Reasoning)</option>
                                         <option value="anthropic/claude-3.5-sonnet">OpenRouter · Claude 3.5 Sonnet (Academic Rigor)</option>
                                         <option value="deepseek/deepseek-r1">OpenRouter · DeepSeek-R1 (Logic &amp; Proofs)</option>
@@ -616,6 +616,7 @@
                             </div>
                             <textarea id="ai-lab-prompt" class="ai-prompt" rows="3" placeholder="Ask for a literature gap, methodology check, next step, or evidence review…"></textarea>
                             <div class="ai-quick-actions">
+                                <button type="button" class="ai-quick-action" data-ai-instruction="Review the current paper context. Summarize the strongest unresolved research issue, identify the evidence already available for it, and recommend the next action for the three-person team. Separate stored project facts from your recommendation. If the project does not contain enough evidence, say exactly what is missing.">Review paper context</button>
                                 <button type="button" class="ai-quick-action" data-ai-instruction="Summarize the current project state and recommend the next three research actions.">Summarize project</button>
                                 <button type="button" class="ai-quick-action" data-ai-instruction="Identify unresolved risks, feedback, or evidence gaps in this research project.">Find research gaps</button>
                                 <button type="button" class="ai-quick-action" data-ai-instruction="Suggest a rigorous structure for the next manuscript section based on the current methodology.">Plan next section</button>
