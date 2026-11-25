@@ -10,39 +10,31 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build-and-deploy:
-    name: Build & Deploy to Azure
+  validate-and-build:
+    name: Validate Tests & Build Assets
     runs-on: ubuntu-latest
 
     steps:
-      # ─── Checkout ─────────────────────────────────────────────────────────
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ─── PHP Setup ────────────────────────────────────────────────────────
       - name: Setup PHP 8.4
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
           extensions: >-
-            mbstring, xml, ctype, iconv, intl, pdo_mysql, zip,
-            bcmath, fileinfo, curl, tokenizer
+            mbstring, xml, ctype, iconv, intl, pdo_mysql, pdo_sqlite,
+            sqlite3, zip, bcmath, fileinfo, curl, tokenizer
           tools: composer:v2
           coverage: none
-
-      # ─── Composer Cache ───────────────────────────────────────────────────
-      - name: Get Composer cache directory
-        id: composer-cache
-        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
 
       - name: Cache Composer dependencies
         uses: actions/cache@v4
         with:
-          path: ${{ steps.composer-cache.outputs.dir }}
+          path: ~/.composer/cache/files
           key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
           restore-keys: ${{ runner.os }}-composer-
 
-      # ─── Install PHP Dependencies for validation ──────────────────────────
       - name: Install Composer dependencies
         run: |
           composer install \
@@ -50,46 +42,82 @@ jobs:
             --no-interaction \
             --optimize-autoloader
 
-      # ─── Ensure Storage Directories Exist ────────────────────────────────
-      - name: Create required storage directories
-        run: |
-          mkdir -p storage/framework/{sessions,views,cache}
-          mkdir -p bootstrap/cache
-          chmod -R 775 storage bootstrap/cache
-
-      # ─── Node.js & Frontend Assets ───────────────────────────────────────
       - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
           node-version: '22.x'
           cache: 'npm'
 
-      - name: Install npm dependencies
-        run: npm ci --ignore-scripts
-
-      - name: Build frontend assets (Vite production)
-        run: npm run build
+      - name: Install npm dependencies & build Vite assets
+        run: |
+          npm ci --ignore-scripts
+          npm run build
         env:
           VITE_APP_NAME: "Co-Auth"
           VITE_REVERB_APP_KEY: ${{ secrets.REVERB_APP_KEY }}
-          VITE_REVERB_HOST: ${{ secrets.REVERB_HOST || format('{0}.azurewebsites.net', secrets.AZURE_APP_NAME) }}
+          VITE_REVERB_HOST: ${{ secrets.REVERB_HOST || (secrets.AZURE_APP_NAME && format('{0}.azurewebsites.net', secrets.AZURE_APP_NAME)) || 'localhost' }}
           VITE_REVERB_PORT: "443"
           VITE_REVERB_SCHEME: https
 
-      # ─── Validate before packaging/deploying ─────────────────────────────
-      - name: Run application tests
+      - name: Run application test suite
         env:
           DB_CONNECTION: sqlite
           DB_DATABASE: database/database.sqlite
         run: |
-          mkdir -p database
+          mkdir -p database storage/framework/{sessions,views,cache} bootstrap/cache
+          chmod -R 775 storage bootstrap/cache
           touch database/database.sqlite
           cp .env.example .env
           php artisan key:generate --force
           php artisan migrate --force
           php artisan test --compact
+          rm -f database/database.sqlite .env
+
+  deploy-to-azure:
+    name: Deploy to Azure App Service
+    needs: validate-and-build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check Azure deployment credentials
+        id: check-azure
+        env:
+          AZURE_APP_NAME: ${{ secrets.AZURE_APP_NAME }}
+          AZURE_PUBLISH_PROFILE: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        run: |
+          if [ -n "$AZURE_APP_NAME" ] && [ -n "$AZURE_PUBLISH_PROFILE" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "Azure deployment credentials detected for app: $AZURE_APP_NAME"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Skipping Azure deploy — AZURE_APP_NAME or AZURE_WEBAPP_PUBLISH_PROFILE secret is not configured in this repository."
+          fi
+
+      - name: Checkout repository
+        if: steps.check-azure.outputs.ready == 'true'
+        uses: actions/checkout@v4
+
+      - name: Setup PHP 8.4
+        if: steps.check-azure.outputs.ready == 'true'
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: >-
+            mbstring, xml, ctype, iconv, intl, pdo_mysql, pdo_sqlite,
+            sqlite3, zip, bcmath, fileinfo, curl, tokenizer
+          tools: composer:v2
+          coverage: none
+
+      - name: Cache Composer dependencies
+        if: steps.check-azure.outputs.ready == 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache/files
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
 
       - name: Install production Composer dependencies
+        if: steps.check-azure.outputs.ready == 'true'
         run: |
           composer install \
             --no-dev \
@@ -97,23 +125,57 @@ jobs:
             --no-interaction \
             --optimize-autoloader
 
-      # ─── Create a minimal .env for artisan optimize commands ─────────────
-      - name: Prepare production .env
+      - name: Ensure storage & cache directories exist
+        if: steps.check-azure.outputs.ready == 'true'
+        run: |
+          mkdir -p storage/framework/{sessions,views,cache} bootstrap/cache
+          chmod -R 775 storage bootstrap/cache
+
+      - name: Setup Node.js 22
+        if: steps.check-azure.outputs.ready == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: 'npm'
+
+      - name: Build production frontend assets
+        if: steps.check-azure.outputs.ready == 'true'
+        run: |
+          npm ci --ignore-scripts
+          npm run build
+        env:
+          VITE_APP_NAME: "Co-Auth"
+          VITE_REVERB_APP_KEY: ${{ secrets.REVERB_APP_KEY }}
+          VITE_REVERB_HOST: ${{ secrets.REVERB_HOST || format('{0}.azurewebsites.net', secrets.AZURE_APP_NAME) }}
+          VITE_REVERB_PORT: "443"
+          VITE_REVERB_SCHEME: https
+
+      - name: Prepare production .env safely
+        if: steps.check-azure.outputs.ready == 'true'
+        env:
+          SECRET_APP_KEY: ${{ secrets.APP_KEY }}
+          SECRET_OPENROUTER_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
           cp .env.example .env
           sed -i "s|APP_ENV=.*|APP_ENV=production|" .env
           sed -i "s|APP_DEBUG=.*|APP_DEBUG=false|" .env
-          sed -i "s|APP_KEY=.*|APP_KEY=${{ secrets.APP_KEY }}|" .env
-          sed -i "s|OPENROUTER_API_KEY=.*|OPENROUTER_API_KEY=${{ secrets.OPENROUTER_API_KEY }}|" .env
-          sed -i "s|AI_API_KEY=.*|AI_API_KEY=${{ secrets.OPENROUTER_API_KEY }}|" .env
+          if [ -n "$SECRET_APP_KEY" ]; then
+            sed -i "s|APP_KEY=.*|APP_KEY=${SECRET_APP_KEY}|" .env
+          else
+            php artisan key:generate --force
+          fi
+          if [ -n "$SECRET_OPENROUTER_KEY" ]; then
+            sed -i "s|OPENROUTER_API_KEY=.*|OPENROUTER_API_KEY=${SECRET_OPENROUTER_KEY}|" .env
+            sed -i "s|AI_API_KEY=.*|AI_API_KEY=${SECRET_OPENROUTER_KEY}|" .env
+          fi
           sed -i "s|AI_BASE_URL=.*|AI_BASE_URL=https://openrouter.ai/api/v1|" .env
           sed -i "s|AI_MODEL=.*|AI_MODEL=openai/gpt-4o-mini|" .env
           sed -i "s|OPENROUTER_BASE_URL=.*|OPENROUTER_BASE_URL=https://openrouter.ai/api/v1|" .env
           sed -i "s|OPENROUTER_MODEL=.*|OPENROUTER_MODEL=openai/gpt-4o-mini|" .env
           sed -i "s|AI_FREE_FOR_ALL=.*|AI_FREE_FOR_ALL=true|" .env
 
-      # ─── Remove Development-Only Files Before Deploy ──────────────────────
       - name: Strip development artifacts
+        if: steps.check-azure.outputs.ready == 'true'
         run: |
           rm -rf \
             node_modules \
@@ -123,17 +185,36 @@ jobs:
             .cursor \
             .claude \
             *.md \
+            *.docx \
             CLAUDE.md \
             AGENTS.md \
             phpunit.xml \
             .phpunit.result.cache \
             .editorconfig \
-            .npmrc
+            .npmrc \
+            database/database.sqlite
 
-      # ─── Deploy to Azure App Service ──────────────────────────────────────
-      - name: Deploy to Azure App Service
+      - name: Deploy package to Azure App Service
+        if: steps.check-azure.outputs.ready == 'true'
         uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ secrets.AZURE_APP_NAME }}
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: .
+
+      - name: Verify live Azure endpoint
+        if: steps.check-azure.outputs.ready == 'true'
+        env:
+          AZURE_APP_NAME: ${{ secrets.AZURE_APP_NAME }}
+        run: |
+          URL="https://${AZURE_APP_NAME}.azurewebsites.net"
+          echo "Checking $URL ..."
+          for i in 1 2 3 4 5; do
+            CODE=$(curl -s -o /dev/null -w "%{http_code}" "$URL" || true)
+            echo "Attempt $i: HTTP $CODE"
+            if [ "$CODE" = "200" ]; then
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::warning::Site returned HTTP $CODE after deployment warmup window."
