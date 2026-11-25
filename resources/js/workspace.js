@@ -767,7 +767,8 @@ const loadWorkspace = async () => {
                     <button class="task-toggle ${task.status === 'done' ? 'is-done' : ''}" data-task-id="${task.id}" data-task-status="${task.status}" type="button">
                         ${task.status === 'done' ? '✓' : '○'}
                     </button>
-                    <span>${task.title}</span>
+                    <span style="flex: 1;">${task.title}</span>
+                    <button type="button" class="text-button" data-delete-task-id="${task.id}" title="Delete task" aria-label="Delete task">✕</button>
                 </div>
             `).join('')
             : '<div class="loading-line">No tasks yet. Add a milestone above.</div>';
@@ -822,6 +823,7 @@ const renderMembers = (members) => {
     memberList.innerHTML = members.map((member) => {
         const initials = member.name.split(' ').map((p) => p[0]).join('').slice(0, 2);
         const roleClass = roleColors[member.role] || 'avatar-teal';
+        const isOwner = currentProject && currentProject.owner_id === member.id;
         return `
             <div class="member-row">
                 <span class="avatar ${roleClass}">${initials}</span>
@@ -830,6 +832,7 @@ const renderMembers = (members) => {
                     <small class="role-badge role-${member.role}">${member.role.replace('-', ' ')}</small>
                 </div>
                 <span class="member-online" title="Online in workspace">●</span>
+                ${isOwner ? '' : `<button type="button" class="text-button" data-remove-member-id="${member.id}" title="Remove collaborator" aria-label="Remove collaborator">✕</button>`}
             </div>
         `;
     }).join('');
@@ -945,7 +948,10 @@ const renderCitations = (citations) => {
             <div class="citation-card citation-item">
                 <div class="citation-top">
                     <span class="citation-tag">${citation.in_text_tag || '[' + (idx + 1) + ']'}</span>
-                    <button type="button" class="button button-quiet button-sm" data-insert-citation-tag="${citation.in_text_tag || '[' + (idx + 1) + ']'}" data-cite-key="${citation.key}" title="Insert into editor">Insert in text</button>
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                        <button type="button" class="button button-quiet button-sm" data-insert-citation-tag="${citation.in_text_tag || '[' + (idx + 1) + ']'}" data-cite-key="${citation.key}" title="Insert into editor">Insert in text</button>
+                        <button type="button" class="text-button" data-delete-citation-id="${citation.id}" title="Delete citation" aria-label="Delete citation">✕</button>
+                    </div>
                 </div>
                 <strong>${citation.title}</strong>
                 <p class="citation-authors">${citation.authors} (${citation.year || 'n.d.'})</p>
@@ -978,6 +984,13 @@ const insertInTextCitation = (tag, key) => {
     document.execCommand('insertHTML', false, citationHtml);
     document.querySelector('#citation-dialog')?.close();
 };
+
+const insertCitationIntoEditor = (citation) => {
+    if (!citation) return;
+    insertInTextCitation(citation.in_text_tag || '[1]', citation.key);
+};
+
+const fetchProjectCitations = () => loadWorkspace();
 
 const appendBibliographyToPaper = () => {
     if (!currentCitations.length) {
@@ -1022,7 +1035,10 @@ const renderMedia = (media) => {
                 <div class="media-info">
                     <strong>Figure ${item.figure_number}: ${item.title}</strong>
                     <p>${item.caption || 'No caption provided.'}</p>
-                    <button type="button" class="button button-quiet button-sm" data-insert-figure-id="${item.id}">Insert into paper</button>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <button type="button" class="button button-quiet button-sm" data-insert-figure-id="${item.id}">Insert into paper</button>
+                        <button type="button" class="text-button" data-delete-media-id="${item.id}" title="Delete figure" aria-label="Delete figure">Remove</button>
+                    </div>
                 </div>
             </div>
         `).join('')
@@ -1226,8 +1242,10 @@ btnCiteModeNew?.addEventListener('click', () => {
     citationForm.style.display = 'block';
 });
 
-// Insert citation tag listener
-document.addEventListener('click', (e) => {
+// Insert citation tag & delete action listeners
+document.addEventListener('click', async (e) => {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
     const insertCitationBtn = e.target.closest('[data-insert-citation-tag]');
     if (insertCitationBtn) {
         insertInTextCitation(insertCitationBtn.dataset.insertCitationTag, insertCitationBtn.dataset.citeKey);
@@ -1237,6 +1255,42 @@ document.addEventListener('click', (e) => {
     if (insertFigureBtn) {
         const mediaItem = currentMedia.find((m) => m.id == insertFigureBtn.dataset.insertFigureId);
         if (mediaItem) insertFigureIntoEditor(mediaItem);
+    }
+
+    const deleteCitationBtn = e.target.closest('[data-delete-citation-id]');
+    if (deleteCitationBtn && confirm('Remove this citation from the project?')) {
+        const response = await fetch(`/api/v1/projects/${projectId}/citations/${deleteCitationBtn.dataset.deleteCitationId}`, {
+            method: 'DELETE',
+            headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrfToken },
+        });
+        if (response.ok) await loadWorkspace();
+    }
+
+    const deleteMediaBtn = e.target.closest('[data-delete-media-id]');
+    if (deleteMediaBtn && confirm('Remove this figure from the project?')) {
+        const response = await fetch(`/api/v1/projects/${projectId}/media/${deleteMediaBtn.dataset.deleteMediaId}`, {
+            method: 'DELETE',
+            headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrfToken },
+        });
+        if (response.ok) await loadWorkspace();
+    }
+
+    const deleteTaskBtn = e.target.closest('[data-delete-task-id]');
+    if (deleteTaskBtn && confirm('Delete this task?')) {
+        const response = await fetch(`/api/v1/tasks/${deleteTaskBtn.dataset.deleteTaskId}`, {
+            method: 'DELETE',
+            headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrfToken },
+        });
+        if (response.ok) await loadWorkspace();
+    }
+
+    const removeMemberBtn = e.target.closest('[data-remove-member-id]');
+    if (removeMemberBtn && confirm('Remove this collaborator from the project?')) {
+        const response = await fetch(`/api/v1/projects/${projectId}/members/${removeMemberBtn.dataset.removeMemberId}`, {
+            method: 'DELETE',
+            headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrfToken },
+        });
+        if (response.ok) await loadWorkspace();
     }
 
     const restoreVersionBtn = e.target.closest('[data-restore-version]');
@@ -1456,13 +1510,18 @@ setupForm?.addEventListener('submit', async (e) => {
 
 // Task & Feedback Toggles
 document.addEventListener('click', async (event) => {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
     const taskToggle = event.target.closest('[data-task-id]');
     const feedbackToggle = event.target.closest('[data-feedback-id]');
     if (taskToggle) {
         const status = taskToggle.dataset.taskStatus === 'done' ? 'todo' : 'done';
         await fetch(`/api/v1/tasks/${taskToggle.dataset.taskId}`, {
             method: 'PATCH',
-            headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+            },
             body: JSON.stringify({ status }),
         });
         await loadWorkspace();
@@ -1470,7 +1529,11 @@ document.addEventListener('click', async (event) => {
     if (feedbackToggle && !feedbackToggle.parentElement.classList.contains('is-resolved')) {
         await fetch(`/api/v1/feedback/${feedbackToggle.dataset.feedbackId}`, {
             method: 'PATCH',
-            headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+            },
             body: JSON.stringify({ status: 'resolved' }),
         });
         await loadWorkspace();
