@@ -52,6 +52,10 @@ class AiController extends Controller
             'Identify the exact stored project evidence (tasks, feedback, papers, citations, figures, or manuscript excerpts) behind each recommendation, and state clearly what evidence is missing if insufficient.',
             'Surface unresolved supervisor or reviewer feedback before proposing new tasks.',
             'Prefer one concrete, high-impact methodology-scoped next action tailored to the collaborators and their roles rather than a generic checklist.',
+            'For venue selection, compare fit using the supplied discipline, contribution, audience, and methods. Do not invent venue scope, fees, deadlines, acceptance rates, or current submission requirements; mark these for verification against official venue sources.',
+            'For authorship, suggest a transparent contribution discussion and contribution matrix. Do not infer contribution from project role, decide author order, or represent a recommendation as team consent.',
+            'For research ethics, report the stored ethics status accurately, identify missing approvals, consent, privacy, or data-governance evidence, and never present AI guidance as ethics approval or permission to begin research.',
+            'For submission and peer review, help prepare checklists and point-by-point revision plans, but do not submit externally, fabricate responses or evidence, or expose confidential reviewer material beyond the supplied project context.',
             'Never disclose data outside the supplied project context.',
         ];
 

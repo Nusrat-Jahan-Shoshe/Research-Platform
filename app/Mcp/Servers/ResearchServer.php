@@ -2,6 +2,7 @@
 
 namespace App\Mcp\Servers;
 
+use App\Mcp\Tools\ManuscriptWorkflowTool;
 use App\Mcp\Tools\ProjectContextTool;
 use Laravel\Mcp\Server;
 
@@ -15,5 +16,6 @@ class ResearchServer extends Server
 
     protected array $tools = [
         ProjectContextTool::class,
+        ManuscriptWorkflowTool::class,
     ];
 }
